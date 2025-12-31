@@ -26,7 +26,7 @@ Dispatcher is a comprehensive job queue management system built for enterprise-g
 
 Dispatcher uses a **PREFIX-based architecture** for flexible, self-contained installations:
 
-- **User Installation**: `~/dispatcher` (default)
+- **User Installation**: `~/.dispatcher` (default)
 - **System Installation**: `/opt/dispatcher`
 - **Custom Location**: Any directory you choose
 
@@ -71,7 +71,7 @@ All components (backend, frontend, logs, data, certificates) are contained withi
 
 ### 1. Run Setup Script
 
-#### Default Installation (to ~/dispatcher)
+#### Default Installation (to ~/.dispatcher)
 ```bash
 chmod +x setup.sh
 ./setup.sh
@@ -122,7 +122,7 @@ The frontend will display the access URLs when it starts. Typically:
 The PREFIX directory contains all application files:
 
 ```
-${PREFIX}/                       # Installation root (e.g., ~/dispatcher)
+${PREFIX}/                       # Installation root (e.g., ~/.dispatcher)
 ├── bin/                         # Binary files (if any)
 ├── etc/                         # Configuration files
 │   ├── .ports                   # Port configuration
@@ -152,7 +152,7 @@ Set the PREFIX environment variable for convenience:
 
 ```bash
 # Add to your shell profile (.bashrc, .zshrc, etc.)
-export PREFIX=~/dispatcher
+export PREFIX=~/.dispatcher
 
 # Or use a different location
 export PREFIX=/opt/dispatcher
@@ -349,9 +349,9 @@ You can run multiple instances with different PREFIXes:
 
 ```bash
 # Development instance
-PREFIX=~/dispatcher-dev ./setup.sh
-PREFIX=~/dispatcher-dev ./start_backend.sh
-PREFIX=~/dispatcher-dev ./start_frontend.sh
+PREFIX=~/.dispatcher-dev ./setup.sh
+PREFIX=~/.dispatcher-dev ./start_backend.sh
+PREFIX=~/.dispatcher-dev ./start_frontend.sh
 
 # Production instance  
 PREFIX=/opt/dispatcher-prod ./setup.sh
