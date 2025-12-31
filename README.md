@@ -48,9 +48,8 @@ All components (backend, frontend, logs, data, certificates) are contained withi
 #### Backend
 - **FastAPI** - High-performance Python web framework
 - **SQLAlchemy** - Database ORM with async support
-- **Celery** - Distributed task queue for background jobs
 - **PostgreSQL/SQLite** - Database options for job storage
-- **Redis** - Celery broker and result backend
+- **Redis** - Job queue and worker communication
 - **Pydantic** - Data validation and serialization
 
 ---
@@ -161,7 +160,7 @@ export PREFIX=/opt/dispatcher
 ### Starting Services
 
 ```bash
-# Start backend (FastAPI + Celery workers)
+# Start backend (FastAPI)
 PREFIX=$PREFIX ./start_backend.sh
 
 # Start frontend (nginx with HTTPS)
