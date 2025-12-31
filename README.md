@@ -266,17 +266,13 @@ To reconfigure ports:
 ## 🚦 API Endpoints
 
 ### Job Management
-- `GET /api/jobs/` - List jobs with pagination and filtering
-- `POST /api/jobs/{job_id}/cancel` - Cancel running job
-- `POST /api/jobs/{job_id}/retry` - Restart failed job  
+- `GET /api/jobs` - List jobs with pagination and filtering
+- `POST /api/jobs/run` - Run a job by name
+- `PUT /api/jobs/{job_id}/cancel` - Cancel running job
+- `PUT /api/jobs/{job_id}/retry` - Restart failed job
 - `DELETE /api/jobs/{job_id}` - Delete job entry
 - `GET /api/jobs/{job_id}/logs` - Get job logs
-- `GET /api/jobs/{job_id}/logs/realtime` - Stream live logs (SSE)
-
-### Job Creation
-- `POST /api/jobs/run` - Run a job by name
-- `POST /api/jobs/create/demo-task` - Create demo job
-- `POST /api/jobs/create/actt` - Create ACTT job
+- `GET /api/jobs/{job_id}/logs/stream` - Stream live logs (SSE)
 
 For complete API documentation, visit `/docs` when the backend is running.
 
