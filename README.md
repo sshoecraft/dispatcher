@@ -213,27 +213,29 @@ curl -k https://localhost:$(grep NGINX_HTTPS $PREFIX/etc/.ports | cut -d= -f2)/
 
 ### Frontend Development
 
+After making frontend changes (`.tsx`, `.ts`, `.css` files):
+
+```bash
+./stop_frontend.sh      # Stop the frontend
+./start_frontend.sh     # Rebuilds and restarts automatically
+```
+
+The `start_frontend.sh` script automatically rebuilds the frontend before starting nginx.
+
+For linting and formatting during development:
 ```bash
 cd frontend
-npm install              # Install dependencies
-npm run dev             # Development server (port 3000)
-npm run build           # Production build
 npm run lint            # TypeScript + ESLint
 npm run format          # Prettier formatting
 ```
 
-After making frontend changes, rebuild:
-```bash
-cd frontend && npm run build && cd ..
-```
-
 ### Backend Development
 
+After making backend changes (`.py` files):
+
 ```bash
-cd backend
-source $PREFIX/venv/bin/activate  # Activate virtual environment
-pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+./stop_backend.sh       # Stop the backend
+./start_backend.sh      # Restart the backend
 ```
 
 ---
@@ -242,46 +244,22 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ### Database Configuration
 
-Edit `$PREFIX/etc/database.json` to configure database settings:
+Configure database settings through the **Settings** page in the web UI:
 
-```json
-{
-  "database": {
-    "DB_TYPE": {
-      "value": "sqlite",
-      "description": "Database type (sqlite, postgresql, mysql)"
-    },
-    "PG_HOST": {
-      "value": "localhost",
-      "description": "PostgreSQL host"
-    }
-  }
-}
-```
+1. Log in to Dispatcher
+2. Navigate to **Settings** → **Database**
+3. Select your database type and configure connection settings
+4. Save changes
 
-### Frontend Configuration
-
-Edit `$PREFIX/etc/config.json` for frontend settings:
-
-```json
-{
-  "API_URL": "https://localhost:8443"
-}
-```
+Supported databases: SQLite (default), PostgreSQL, MySQL
 
 ### Port Configuration
 
-The system automatically detects available ports and creates `$PREFIX/etc/.ports`:
+The system automatically detects available ports during setup and creates `$PREFIX/etc/.ports`.
 
+To reconfigure ports:
 ```bash
-export NGINX_HTTP=8080
-export NGINX_HTTPS=8443
-export FASTAPI=8000
-```
-
-To use different ports, edit this file or run:
-```bash
-PREFIX=$PREFIX ./port_manager.sh force
+./port_manager.sh force
 ```
 
 ---
