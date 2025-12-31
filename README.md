@@ -7,7 +7,7 @@
 
 ## 🚀 Overview
 
-Dispatcher is a comprehensive job queue management system built for enterprise-grade compliance monitoring and automation. It provides real-time job monitoring, queue management, and control operations through a modern web interface.
+Dispatcher is a job queue management system for job orchestration and monitoring. It provides real-time job monitoring, queue management, and control operations through a modern web interface.
 
 ### Key Features
 
