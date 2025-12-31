@@ -1,0 +1,8 @@
+@plugin "daisyui" {
+  themes: light --default;
+}
+
+/* Daisy Overrides */
+.stat-value {
+  font-weight: 700;
+}

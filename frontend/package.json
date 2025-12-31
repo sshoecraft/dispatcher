@@ -1,0 +1,56 @@
+{
+  "name": "dispatcher",
+  "private": true,
+  "version": "0.1.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "tsc": "tsc --noEmit",
+    "tsc:watch": "tsc --noEmit --watch",
+    "lint": "tsc -b && eslint .",
+    "preview": "vite preview",
+    "format:check": "prettier \"./**/*.{js,jsx,ts,tsx}\" --check --ignore-unknown",
+    "format": "prettier \"./**/*.{js,jsx,ts,tsx}\" --write --ignore-unknown",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "@okta/okta-auth-js": "^7.8.1",
+    "@okta/okta-react": "^6.9.0",
+    "@tailwindcss/vite": "^4.1.4",
+    "axios": "^1.8.4",
+    "daisyui": "^5.0.27",
+    "lucide-react": "^0.539.0",
+    "react": "^19.0.0",
+    "react-datepicker": "^8.4.0",
+    "react-dom": "^19.0.0",
+    "react-router": "^7.5.3",
+    "react-toastify": "^11.0.5",
+    "recharts": "^3.1.2",
+    "tailwindcss": "^4.1.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.21.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.1",
+    "prettier": "3.5.3",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.24.1",
+    "vite": "^6.3.4"
+  },
+  "overrides": {
+    "@babel/runtime": "^7.26.10"
+  },
+  "lint-staged": {
+    "**/*": "npm run format"
+  }
+}

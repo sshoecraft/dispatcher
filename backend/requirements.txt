@@ -1,0 +1,54 @@
+# FastAPI and web framework dependencies
+fastapi>=0.100.0
+uvicorn>=0.23.0
+
+# Database dependencies
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0  # PostgreSQL adapter
+pymysql>=1.1.0          # MySQL adapter (optional)
+
+# HTTP client for worker communication
+httpx>=0.24.0
+
+# Redis client for logging
+redis>=4.0.0
+
+# Async file I/O for logger
+aiofiles>=23.0.0
+aiohttp>=3.8.0
+
+# Data validation and serialization
+pydantic>=2.0.0
+
+# Timezone handling
+pytz>=2023.3
+
+# Optional Azure identity for managed identity authentication
+azure-identity>=1.13.0
+
+# SSH key generation and management
+cryptography>=41.0.0
+paramiko>=3.0.0
+
+# Authentication dependencies
+python-jose[cryptography]>=3.3.0  # JWT token handling
+passlib[bcrypt]>=1.7.4            # Password hashing with bcrypt
+bcrypt>=4.0.0,<4.1.0              # Pin bcrypt for passlib compatibility
+python-pam>=2.0.2                  # OS/PAM authentication
+ldap3>=2.9.1                       # LDAP/Active Directory authentication
+
+# Python standard library extensions (usually included but explicit for clarity)
+# pathlib - built-in
+# asyncio - built-in
+# threading - built-in
+# contextlib - built-in
+# typing - built-in
+# datetime - built-in
+# json - built-in
+# os - built-in
+# subprocess - built-in
+# signal - built-in
+# time - built-in
+# base64 - built-in
+# logging - built-in
+# re - built-in

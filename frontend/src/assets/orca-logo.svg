@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="120" height="80" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="orcaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1976d2;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#2196f3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#42a5f5;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="bellyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5f5f5;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Main body -->
+  <ellipse cx="50" cy="40" rx="35" ry="22" fill="url(#orcaGradient)" />
+  
+  <!-- Belly -->
+  <ellipse cx="50" cy="45" rx="28" ry="15" fill="url(#bellyGradient)" />
+  
+  <!-- Tail fin -->
+  <path d="M15 35 L5 25 L10 40 L5 55 L15 45 Z" fill="url(#orcaGradient)" />
+  
+  <!-- Dorsal fin -->
+  <path d="M45 18 L50 8 L55 18 Z" fill="url(#orcaGradient)" />
+  
+  <!-- Pectoral fin -->
+  <ellipse cx="35" cy="50" rx="8" ry="4" fill="url(#orcaGradient)" transform="rotate(20 35 50)" />
+  
+  <!-- Eye -->
+  <circle cx="65" cy="35" r="4" fill="#ffffff" />
+  <circle cx="66" cy="34" r="2" fill="#1a1a1a" />
+  <circle cx="66.5" cy="33.5" r="0.8" fill="#ffffff" />
+  
+  <!-- White eye patch -->
+  <ellipse cx="75" cy="32" rx="8" ry="5" fill="#ffffff" />
+  
+  <!-- Smile -->
+  <path d="M70 42 Q75 46 80 42" stroke="#1a1a1a" stroke-width="1.5" fill="none" stroke-linecap="round" />
+  
+  <!-- Water bubbles -->
+  <circle cx="90" cy="20" r="2" fill="#64b5f6" opacity="0.6" />
+  <circle cx="95" cy="15" r="1.5" fill="#64b5f6" opacity="0.5" />
+  <circle cx="100" cy="25" r="1" fill="#64b5f6" opacity="0.4" />
+  
+  <!-- Small decorative waves -->
+  <path d="M85 60 Q90 58 95 60 Q100 62 105 60" stroke="#42a5f5" stroke-width="1" fill="none" opacity="0.7" />
+  <path d="M90 65 Q95 63 100 65 Q105 67 110 65" stroke="#42a5f5" stroke-width="1" fill="none" opacity="0.5" />
+</svg>

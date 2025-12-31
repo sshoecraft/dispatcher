@@ -1,0 +1,30 @@
+:root {
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* No dark variants by prefers-color-scheme */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+body {
+  color: black;
+  background-color: var(--color-gray-100);
+  min-height: 100vh;
+  font-family: 'Poppins', sans-serif;
+  overflow-x: auto !important;
+}
+
+/* Force horizontal scrollbar when needed */
+html {
+  overflow-x: auto !important;
+}
+
+#root {
+  overflow-x: auto !important;
+}

@@ -1,0 +1,48 @@
+main#stack-page {
+  a {
+    font-weight: 500;
+    color: #646cff;
+    text-decoration: inherit;
+  }
+
+  a:hover {
+    color: #535bf2;
+  }
+
+  h1 {
+    font-size: 3.2em;
+    line-height: 1.4;
+    font-weight: 700;
+  }
+
+  .logo {
+    height: 10em;
+    padding: 1.5em;
+    will-change: filter;
+    transition: filter 300ms;
+  }
+
+  .logo:hover {
+    filter: drop-shadow(0 0 2em #646cff);
+  }
+
+  .logo.react:hover {
+    filter: drop-shadow(0 0 2em #61dafb);
+  }
+
+  .logo.axios:hover {
+    filter: drop-shadow(0 0 2em #5a29e4);
+  }
+
+  .logo.react-router:hover {
+    filter: drop-shadow(0 0 2em #d0011c);
+  }
+
+  .logo.tailwindcss:hover {
+    filter: drop-shadow(0 0 2em #00bcff);
+  }
+
+  .logo.daisyui:hover {
+    filter: drop-shadow(0 0 2em #fec74c);
+  }
+}

@@ -1,0 +1,14 @@
+# Core dependencies for Dispatcher Worker - HTTP REST + SSE
+fastapi>=0.104.0
+uvicorn>=0.24.0
+psutil>=5.9.0
+requests>=2.28.0
+aiofiles>=23.2.0
+
+# HTTP server and async support
+starlette>=0.27.0
+httpx>=0.25.0
+websockets>=11.0.0
+
+# Redis for high-throughput logging
+redis>=5.0.0

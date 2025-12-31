@@ -1,0 +1,20 @@
+[Unit]
+Description=Dispatcher (Backend and Frontend)
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=dispatcher
+Group=dispatcher
+WorkingDirectory=/opt/dispatcher
+Environment="HOME=/opt/dispatcher"
+Environment="PATH=/opt/dispatcher/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/opt/dispatcher/startup.sh
+ExecStop=/opt/dispatcher/shutdown.sh
+TimeoutStartSec=600
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

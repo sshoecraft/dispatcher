@@ -1,0 +1,9 @@
+.profile-container {
+  width: fit-content;
+}
+
+.dropdown {
+  .dropdown-content {
+    top: 30px;
+  }
+}

@@ -1,0 +1,37 @@
+/* Custom push drawer behavior */
+.push-drawer .drawer-side {
+  z-index: 10;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-in-out;
+  position: fixed;
+  top: 4rem; /* Start below navbar (navbar height ~64px = 4rem) */
+  left: 0;
+  bottom: 0;
+  width: 16rem; /* w-64 = 256px = 16rem */
+}
+
+.push-drawer .drawer-content {
+  transition: margin-left 0.3s ease-in-out;
+  margin-left: 0;
+  max-height: calc(100vh - 4rem); /* Full viewport height minus navbar height */
+  overflow-y: auto;
+}
+
+.push-drawer .drawer-toggle:checked ~ .drawer-side {
+  transform: translateX(0);
+}
+
+.push-drawer .drawer-toggle:checked ~ .drawer-content {
+  margin-left: 16rem; /* w-64 = 256px = 16rem */
+}
+
+/* Hide the overlay on push drawer as we don't need it for push behavior */
+.push-drawer .drawer-overlay {
+  display: none;
+}
+
+/* Ensure navbar stays on top */
+.navbar {
+  z-index: 30;
+  position: relative;
+}

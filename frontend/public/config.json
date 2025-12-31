@@ -1,0 +1,12 @@
+{
+  "API_URL": "https://localhost:8443",
+  "ENV": "local",
+  "clientId": "",
+  "issuer": "",
+  "scopes": [
+    "openid",
+    "profile",
+    "email",
+    "offline_access"
+  ]
+}

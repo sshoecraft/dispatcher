@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+
+import sys
+import json
+import requests
+import argparse
+import os
+import re
+
+def get_backend_port():
+    """
+    Read the backend port from .ports file
+    Returns the FASTAPI port or defaults to 8000
+    """
+    try:
+        # Use PREFIX environment variable or default to user directory
+        prefix = os.getenv('PREFIX', os.path.expanduser('~/.dispatcher'))
+        ports_file = os.path.join(prefix, 'etc', '.ports')
+        
+        if os.path.exists(ports_file):
+            with open(ports_file, 'r') as f:
+                content = f.read()
+                # Look for FASTAPI=XXXX pattern
+                match = re.search(r'export\s+FASTAPI=(\d+)', content)
+                if match:
+                    return int(match.group(1))
+    except Exception as e:
+        print(f"Warning: Could not read .ports file: {e}", file=sys.stderr)
+    
+    # Default fallback
+    return 8000
+
+def run_job(job_name, args_json=None, created_by=None, queue=None, api_url=None):
+    """
+    Run a job definition by name
+    
+    Args:
+        job_name: Name of the job definition to run
+        args_json: Optional JSON string of arguments to pass to the job
+        created_by: Optional user ID who created the job (defaults to "system")
+        queue: Optional target queue name
+        api_url: API base URL (auto-detected from .ports if not provided)
+    """
+    
+    # Auto-detect API URL if not provided
+    if api_url is None:
+        backend_port = get_backend_port()
+        api_url = f"http://127.0.0.1:{backend_port}"
+    
+    # Prepare the request payload
+    payload = {
+        "spec_name": job_name
+    }
+    
+    if args_json:
+        try:
+            payload["runtime_args"] = json.loads(args_json)
+        except json.JSONDecodeError as e:
+            print(f"Error: Invalid JSON in arguments: {e}", file=sys.stderr)
+            return False
+    
+    if created_by:
+        payload["created_by"] = created_by
+    else:
+        payload["created_by"] = "system"
+    
+    if queue:
+        payload["queue"] = queue
+    
+    try:
+        # Make the API call
+        response = requests.post(
+            f"{api_url}/api/jobs/run",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            job = result.get("job", {})
+            job_id = job.get("id", "unknown")
+            queue_name = job.get("queue_name", "unknown")
+            print(f"✅ Job '{job_name}' started successfully")
+            print(f"📋 Job ID: {job_id}")
+            print(f"📍 Queue: {queue_name}")
+            return True
+        else:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get("detail", f"HTTP {response.status_code}")
+            except:
+                error_msg = f"HTTP {response.status_code}"
+            
+            print(f"❌ Failed to run job '{job_name}': {error_msg}", file=sys.stderr)
+            return False
+            
+    except requests.exceptions.ConnectionError:
+        print(f"❌ Connection error: Could not connect to API at {api_url}", file=sys.stderr)
+        print("💡 Make sure the Dispatcher backend is running", file=sys.stderr)
+        return False
+    except requests.exceptions.Timeout:
+        print(f"❌ Timeout error: API request timed out", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"❌ Unexpected error: {e}", file=sys.stderr)
+        return False
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Run a job definition by name",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  ./run_job "my-job"
+  ./run_job "data-import" '{"database": "production"}'
+  ./run_job "backup-job" '{"retention": 30}' --created-by "admin"
+  ./run_job "test-job" --queue "Priority"
+  ./run_job "test-job" --api-url "http://localhost:8000"
+  
+  PREFIX=/opt/dispatcher ./run_job "my-job"  # Use custom PREFIX location
+        """
+    )
+    
+    parser.add_argument(
+        "job_name",
+        help="Name of the job definition to run"
+    )
+    
+    parser.add_argument(
+        "args",
+        nargs='?',
+        help="JSON string of arguments to pass to the job (e.g., '{\"key\": \"value\"}')"
+    )
+    
+    parser.add_argument(
+        "--created-by",
+        help="User ID who created the job (defaults to 'system')"
+    )
+    
+    parser.add_argument(
+        "--queue",
+        help="Target queue name for the job"
+    )
+    
+    parser.add_argument(
+        "--api-url",
+        help="API base URL (default: auto-detected from $PREFIX/etc/.ports file)"
+    )
+    
+    args = parser.parse_args()
+    
+    success = run_job(
+        job_name=args.job_name,
+        args_json=args.args,
+        created_by=args.created_by,
+        queue=args.queue,
+        api_url=args.api_url
+    )
+    
+    sys.exit(0 if success else 1)
+
+if __name__ == "__main__":
+    main()
