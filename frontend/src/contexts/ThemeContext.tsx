@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { useConfig } from '@/hooks'
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -23,8 +24,11 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+  const { storageNamespace } = useConfig()
+  const themeKey = `${storageNamespace}-theme`
+
   const [theme, setTheme] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem('dispatcher-theme')
+    const savedTheme = localStorage.getItem(themeKey)
     return (savedTheme as Theme) || 'system'
   })
 
@@ -62,14 +66,14 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     document.body.classList.add(resolvedTheme)
 
     // Save to localStorage
-    localStorage.setItem('dispatcher-theme', theme)
+    localStorage.setItem(themeKey, theme)
 
     console.log('Applied theme to DOM:', {
       htmlDataTheme: root.getAttribute('data-theme'),
       htmlClasses: root.className,
       bodyDataTheme: document.body.getAttribute('data-theme'),
       bodyClasses: document.body.className,
-      localStorage: localStorage.getItem('dispatcher-theme'),
+      localStorage: localStorage.getItem(themeKey),
     })
   }, [theme])
 

@@ -3,11 +3,10 @@
 # Port Manager - Detects available ports and manages port configuration
 # Creates .ports file with consistent port assignments
 
-# Set PREFIX with default fallback
-PREFIX=${PREFIX:-${HOME}/.dispatcher}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/branding.sh"
 
 PORTS_FILE=".ports"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PORTS_PATH="${PREFIX}/etc/${PORTS_FILE}"
 
 # Frontend port sets (nginx)
@@ -92,7 +91,7 @@ write_ports_file() {
     # Ensure PREFIX/etc directory exists
     mkdir -p "$(dirname "$PORTS_PATH")"
     
-    echo "# Dispatcher Port Configuration" > "$PORTS_PATH"
+    echo "# $BRAND_APP_NAME Port Configuration" > "$PORTS_PATH"
     echo "# Generated on $(date)" >> "$PORTS_PATH"
     echo "# PREFIX: $PREFIX" >> "$PORTS_PATH"
     echo "" >> "$PORTS_PATH"
@@ -263,12 +262,12 @@ case "${1:-}" in
         fi
         ;;
     "help"|"-h"|"--help"|*)
-        echo "Port Manager - Dispatcher Port Detection and Management"
+        echo "Port Manager - $BRAND_APP_NAME Port Detection and Management"
         echo ""
         echo "Usage: [PREFIX=/path/to/install] $0 <command>"
         echo ""
         echo "Environment Variables:"
-        echo "  PREFIX            - Installation prefix (default: \$HOME/.dispatcher)"
+        echo "  PREFIX            - Installation prefix (default: \$HOME/.$BRAND_SLUG)"
         echo ""
         echo "Commands:"
         echo "  initialize, init  - Initialize port configuration (only if .ports doesn't exist)"

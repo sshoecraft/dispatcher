@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signIn } from '@/lib/auth'
-import DispatcherIcon from '@/assets/dispatcher-icon.svg'
+import { useConfig } from '@/hooks'
 
 const Login = () => {
+  const { iconUrl, appName } = useConfig()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -36,12 +37,12 @@ const Login = () => {
         <div className="hero-content text-center">
           <div className="max-w-md">
             <img
-              src={DispatcherIcon}
+              src={iconUrl}
               className="m-auto h-24 p-2 will-change-filter transition-filter duration-300"
-              alt="Dispatcher"
+              alt={appName}
             />
             <h1 className="text-4xl font-bold mb-7">
-              Dispatcher
+              {appName}
             </h1>
 
             <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,20 +1,17 @@
 #!/bin/bash
-# Shutdown script for Dispatcher
-# Stops frontend first, then backend
+# Shutdown script: stops frontend first, then backend.
+# Branding/PREFIX come from branding.json via branding.sh.
 
 set -e
 
-# Get the directory where this script is located (the repo directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CWD="$SCRIPT_DIR"
-
-# Set PREFIX - expand ~ to actual home directory
-export PREFIX="${PREFIX:-$HOME/.dispatcher}"
+source "$SCRIPT_DIR/branding.sh"
 
 # Ensure PATH includes common locations for tools
 export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
-echo "Stopping Dispatcher at $(date)"
+echo "Stopping $BRAND_APP_NAME at $(date)"
 
 # Stop frontend first
 echo "Stopping frontend..."
@@ -38,4 +35,4 @@ else
     echo "All services stopped successfully"
 fi
 
-echo "Dispatcher shutdown complete at $(date)"
+echo "$BRAND_APP_NAME shutdown complete at $(date)"

@@ -1,13 +1,14 @@
 import { Link } from 'react-router'
 
 import { signOut, getCurrentUser } from '@/lib/auth'
+import { useConfig } from '@/hooks'
 
-import dispatcherLogo from '@/assets/dispatcher-logo.svg'
 import userCircle from '@/assets/user-circle.svg'
 import settings from '@/assets/settings.svg'
 import expandLeft from '@/assets/expand-left.svg'
 
 const Navbar = () => {
+  const { logoUrl, appName } = useConfig()
   const currentUser = getCurrentUser()
   
   if (!currentUser) {
@@ -22,8 +23,8 @@ const Navbar = () => {
       <div className="flex-1 flex items-center">
         <Link className="flex w-fit px-2 items-baseline" to="/dashboard">
           <img
-            src={dispatcherLogo}
-            alt="Dispatcher Logo"
+            src={logoUrl}
+            alt={`${appName} Logo`}
             className="ml-2 mr-1.5 h-8 w-auto"
           />
         </Link>

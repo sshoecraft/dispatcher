@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# start_frontend.sh - Start the Dispatcher frontend server
-# Production-like setup with nginx proxy and SSL
+# start_frontend.sh - Start the frontend server (nginx + SSL)
+# Branding (app name, prefix, etc.) is sourced from branding.json.
 
 set -e
 
-# Set PREFIX with default fallback
-PREFIX=${PREFIX:-${HOME}/.dispatcher}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/branding.sh"
 
 # Check if setup has been completed by verifying .ports file exists
 PORTS_FILE="$PREFIX/etc/.ports"
@@ -28,11 +28,8 @@ echo "✅ Setup verified: Found port configuration"
 
 frontend_dir=frontend
 
-echo "🚀 Starting Dispatcher Frontend Server"
+echo "🚀 Starting $BRAND_APP_NAME Frontend Server"
 echo "=================================="
-
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load port configuration (created by setup.sh)
 if ! source "$PREFIX/etc/.ports" 2>/dev/null; then
@@ -115,67 +112,40 @@ if [ ! -f "$SSL_DIR/cert.pem" ] || [ ! -f "$SSL_DIR/key.pem" ]; then
     exit 1
 fi
 
-# Create local config by copying original and updating API_URL
-echo "🔧 Creating local config for nginx proxy setup..."
-
-# Create config in PREFIX/etc and symlink to public
-CONFIG_FILE="$PREFIX/etc/config.json"
-if [ -f "public/config.json" ] && [ ! -f "$CONFIG_FILE" ]; then
-    # Copy the original config.json to PREFIX location
-    cp public/config.json "$CONFIG_FILE"
-    echo "📋 Config copied to $CONFIG_FILE"
-fi
-
-# Always ensure symlink exists
-if [ ! -L "public/config.local.json" ]; then
-    ln -sf "$CONFIG_FILE" public/config.local.json
-    echo "🔗 Created symlink: public/config.local.json -> $CONFIG_FILE"
-fi
-
-# Check if original config exists for API_URL update
-if [ -f "public/config.json" ]; then
-    # Check if we should use localhost (likely SSH tunnel) or server IP
-    # Use localhost for SSH tunnel compatibility, server IP for direct access
-    if [ "${USE_LOCALHOST:-false}" = "true" ]; then
-        API_URL="https://localhost:$NGINX_HTTPS"
-        echo "🔒 Using localhost API URL for SSH tunnel compatibility"
-    else
-        API_URL="https://$SERVER_IP:$NGINX_HTTPS"
-        echo "🌐 Using server IP API URL for direct access"
-    fi
-    
-    # Update only the API_URL in the PREFIX config file using jq
-    if command -v jq &> /dev/null; then
-        jq --arg url "$API_URL" '.API_URL = $url' public/config.json > "$CONFIG_FILE"
-    else
-        # Fallback if jq is not available - use sed
-        cp public/config.json "$CONFIG_FILE"
-        sed -i.bak "s|\"API_URL\":[[:space:]]*\"[^\"]*\"|\"API_URL\": \"$API_URL\"|" "$CONFIG_FILE"
-        rm -f "${CONFIG_FILE}.bak"
-    fi
+# Determine runtime API_URL based on detected ports.
+# Use localhost for SSH-tunnel compatibility, otherwise the server IP.
+if [ "${USE_LOCALHOST:-false}" = "true" ]; then
+    API_URL="https://localhost:$NGINX_HTTPS"
+    echo "🔒 Using localhost API URL for SSH tunnel compatibility"
 else
-    echo "❌ Error: public/config.json not found"
-    exit 1
+    API_URL="https://$SERVER_IP:$NGINX_HTTPS"
+    echo "🌐 Using server IP API URL for direct access"
 fi
+echo "🔧 API_URL = $API_URL"
 
-# Copy the config for build process
-cp public/config.local.json public/config.json
-
-# Build the production version directly to $PREFIX/www
+# Build production to $PREFIX/www. The dispatcher-branding vite plugin
+# writes $PREFIX/www/config.json from branding.json automatically.
 echo "🔨 Building production build to $PREFIX/www..."
 npm run build -- --outDir "$PREFIX/www" --emptyOutDir
 
-# Restore original config to avoid committing changes
-git checkout -- public/config.json 2>/dev/null || true
-
-# Check if build was successful
 if [ ! -d "$PREFIX/www" ]; then
     echo "❌ Error: Build failed - $PREFIX/www directory not found"
     exit 1
 fi
 
-# Copy the config.local.json to www/config.json for runtime
-cp public/config.local.json "$PREFIX/www/config.json"
+# Inject the runtime API_URL into the built config.json (overwriting the
+# placeholder value from branding.json).
+WWW_CONFIG="$PREFIX/www/config.json"
+if [ ! -f "$WWW_CONFIG" ]; then
+    echo "❌ Error: Build did not produce $WWW_CONFIG"
+    exit 1
+fi
+if command -v jq &> /dev/null; then
+    jq --arg url "$API_URL" '.API_URL = $url' "$WWW_CONFIG" > "$WWW_CONFIG.tmp" && mv "$WWW_CONFIG.tmp" "$WWW_CONFIG"
+else
+    sed -i.bak "s|\"API_URL\":[[:space:]]*\"[^\"]*\"|\"API_URL\": \"$API_URL\"|" "$WWW_CONFIG"
+    rm -f "${WWW_CONFIG}.bak"
+fi
 
 echo "✅ Build completed successfully"
 
@@ -366,7 +336,7 @@ echo $NGINX_PID > "$PREFIX/tmp/nginx.pid.path"
 echo "$NGINX_CONFIG" > "$PREFIX/tmp/nginx.config.path"
 
 echo ""
-echo "✅ Dispatcher Server started successfully with nginx!"
+echo "✅ $BRAND_APP_NAME Server started successfully with nginx!"
 echo "🔐 Access your application at: https://$SERVER_IP:$NGINX_HTTPS"
 echo "⚠️  Note: You'll see a browser security warning - click 'Advanced' and 'Proceed to localhost'"
 echo "🔧 Nginx PID: $NGINX_PID"

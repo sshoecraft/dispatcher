@@ -1,6 +1,7 @@
 #!/bin/bash
 
-PREFIX=${PREFIX:-${HOME}/.dispatcher}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/branding.sh"
 
 # Load port configuration
 if [ -f "$PREFIX/etc/.ports" ]; then

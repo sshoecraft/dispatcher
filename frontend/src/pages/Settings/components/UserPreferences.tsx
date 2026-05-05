@@ -1,5 +1,6 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { useTheme } from '@/contexts'
+import { useConfig } from '@/hooks'
 
 export interface UserPreferencesRef {
   saveChanges: () => void;
@@ -13,6 +14,8 @@ interface UserPreferencesProps {
 
 const UserPreferences = forwardRef<UserPreferencesRef, UserPreferencesProps>(({ onChange }, ref) => {
   const { theme, setTheme, effectiveTheme } = useTheme()
+  const { storageNamespace } = useConfig()
+  const prefsKey = `${storageNamespace}-user-preferences`
 
   const defaultPreferences = {
     language: 'en',
@@ -31,7 +34,7 @@ const UserPreferences = forwardRef<UserPreferencesRef, UserPreferencesProps>(({ 
 
   // Load preferences from localStorage on component mount
   useEffect(() => {
-    const savedPreferences = localStorage.getItem('dispatcher-user-preferences')
+    const savedPreferences = localStorage.getItem(prefsKey)
     if (savedPreferences) {
       try {
         const parsed = JSON.parse(savedPreferences)
@@ -55,7 +58,7 @@ const UserPreferences = forwardRef<UserPreferencesRef, UserPreferencesProps>(({ 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     saveChanges: () => {
-      localStorage.setItem('dispatcher-user-preferences', JSON.stringify(preferences))
+      localStorage.setItem(prefsKey, JSON.stringify(preferences))
       setOriginalPreferences(preferences)
       setHasUnsavedChanges(false)
     },

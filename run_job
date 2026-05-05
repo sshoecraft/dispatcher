@@ -7,14 +7,33 @@ import argparse
 import os
 import re
 
+# Single source of truth for branding/identity (slug, app name, etc.).
+_REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _get_slug():
+    try:
+        with open(os.path.join(_REPO_DIR, 'branding.json')) as f:
+            return json.load(f).get('slug', 'dispatcher')
+    except (OSError, ValueError):
+        return 'dispatcher'
+
+
+def _get_app_name():
+    try:
+        with open(os.path.join(_REPO_DIR, 'branding.json')) as f:
+            return json.load(f).get('appName', 'Dispatcher')
+    except (OSError, ValueError):
+        return 'Dispatcher'
+
+
 def get_backend_port():
     """
     Read the backend port from .ports file
     Returns the FASTAPI port or defaults to 8000
     """
     try:
-        # Use PREFIX environment variable or default to user directory
-        prefix = os.getenv('PREFIX', os.path.expanduser('~/.dispatcher'))
+        prefix = os.getenv('PREFIX', os.path.expanduser('~/.' + _get_slug()))
         ports_file = os.path.join(prefix, 'etc', '.ports')
         
         if os.path.exists(ports_file):
@@ -97,7 +116,7 @@ def run_job(job_name, args_json=None, created_by=None, queue=None, api_url=None)
             
     except requests.exceptions.ConnectionError:
         print(f"❌ Connection error: Could not connect to API at {api_url}", file=sys.stderr)
-        print("💡 Make sure the Dispatcher backend is running", file=sys.stderr)
+        print(f"💡 Make sure the {_get_app_name()} backend is running", file=sys.stderr)
         return False
     except requests.exceptions.Timeout:
         print(f"❌ Timeout error: API request timed out", file=sys.stderr)
@@ -118,7 +137,7 @@ Examples:
   ./run_job "test-job" --queue "Priority"
   ./run_job "test-job" --api-url "http://localhost:8000"
   
-  PREFIX=/opt/dispatcher ./run_job "my-job"  # Use custom PREFIX location
+  PREFIX=/opt/myapp ./run_job "my-job"  # Use custom PREFIX location
         """
     )
     

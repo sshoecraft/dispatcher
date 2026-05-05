@@ -1,13 +1,14 @@
 #!/bin/bash
 
-# Dispatcher Setup Script
-# This script installs all necessary dependencies and configures the system
+# Setup Script
+# This script installs all necessary dependencies and configures the system.
+# Branding (app name, prefix slug, etc.) comes from branding.json.
 # Usage: PREFIX=/path/to/install ./setup.sh [--uninstall]
 
 set -e  # Exit on any error
 
-# Set PREFIX with default fallback
-PREFIX=${PREFIX:-${HOME}/.dispatcher}
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "$SCRIPT_DIR/branding.sh"
 
 UNINSTALL=false
 
@@ -20,24 +21,24 @@ for arg in "$@"; do
         ;;
         --help|-h)
         cat << EOF
-Dispatcher Setup Script
+$BRAND_APP_NAME Setup Script
 
 Usage: [PREFIX=/path/to/install] $0 [OPTIONS]
 
 Environment Variables:
-  PREFIX            Installation prefix (default: \$HOME/.dispatcher)
+  PREFIX            Installation prefix (default: \$HOME/.$BRAND_SLUG)
                     Examples:
-                    - PREFIX=~/.dispatcher (user installation)
-                    - PREFIX=/opt/dispatcher (system installation)
+                    - PREFIX=~/.$BRAND_SLUG (user installation)
+                    - PREFIX=/opt/$BRAND_SLUG (system installation)
 
 Options:
-  --uninstall       Remove Dispatcher installation
+  --uninstall       Remove $BRAND_APP_NAME installation
   --help, -h        Show this help message
 
 Examples:
-  $0                              # Install to ~/.dispatcher
-  PREFIX=/opt/dispatcher $0      # Install to /opt/dispatcher
-  $0 --uninstall                 # Remove installation
+  $0                                # Install to ~/.$BRAND_SLUG
+  PREFIX=/opt/$BRAND_SLUG $0        # Install to /opt/$BRAND_SLUG
+  $0 --uninstall                    # Remove installation
 EOF
         exit 0
         ;;
@@ -67,16 +68,14 @@ print_warning() {
     echo -e "${YELLOW}[*]${NC} $1"
 }
 
-# Get the directory where the script is located
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
 # Uninstall function
 uninstall_dispatcher() {
-    print_warning "Uninstalling Dispatcher from PREFIX: $PREFIX"
+    print_warning "Uninstalling $BRAND_APP_NAME from PREFIX: $PREFIX"
 
     # Stop any running processes
-    print_status "Stopping any running Dispatcher processes..."
+    print_status "Stopping any running $BRAND_APP_NAME processes..."
     ./stop_backend.sh 2>/dev/null || true
     ./stop_frontend.sh 2>/dev/null || true
     
@@ -100,7 +99,7 @@ create_database_config() {
     
     mkdir -p "$PREFIX/etc"
     
-    cat > "$PREFIX/etc/database.json" << 'EOF'
+    cat > "$PREFIX/etc/database.json" << EOF
 {
   "database": {
     "DB_TYPE": {
@@ -152,10 +151,10 @@ create_database_config() {
       "validation_pattern": null
     },
     "PG_MANAGED_IDENTITY_USER": {
-      "value": "dispatcher-dev",
+      "value": "$BRAND_SLUG-dev",
       "is_sensitive": false,
       "description": "Azure managed identity user",
-      "default_value": "dispatcher-dev",
+      "default_value": "$BRAND_SLUG-dev",
       "is_required": false,
       "validation_pattern": null
     },
@@ -172,26 +171,6 @@ create_database_config() {
 EOF
     
     print_status "Database configuration created at $PREFIX/etc/database.json"
-}
-
-# Function to create frontend config.json
-create_frontend_config() {
-    print_status "Creating frontend configuration..."
-    
-    # Load port configuration to set API_URL
-    if [[ -f "$PREFIX/etc/.ports" ]]; then
-        source "$PREFIX/etc/.ports"
-    else
-        NGINX_HTTPS=8443  # fallback
-    fi
-    
-    cat > "$PREFIX/etc/config.json" << EOF
-{
-  "API_URL": "https://localhost:$NGINX_HTTPS"
-}
-EOF
-    
-    print_status "Frontend configuration created at $PREFIX/etc/config.json"
 }
 
 # Handle uninstall
@@ -287,11 +266,11 @@ NODE_VERSION=$(node -v | cut -d'v' -f2)
 print_status "Node.js v$NODE_VERSION found"
 print_status "All prerequisites satisfied"
 
-# Check if system Redis is running (Dispatcher runs its own Redis instance)
+# Check if system Redis is running ($BRAND_APP_NAME runs its own Redis instance)
 if systemctl is-active --quiet redis-server 2>/dev/null || systemctl is-active --quiet redis 2>/dev/null; then
     print_error "System Redis server is running!"
     echo
-    echo "Dispatcher runs its own Redis instance and will conflict with the system service."
+    echo "$BRAND_APP_NAME runs its own Redis instance and will conflict with the system service."
     echo "Please stop and disable the system Redis server before continuing:"
     echo
     echo "  sudo systemctl stop redis-server"
@@ -302,7 +281,7 @@ fi
 print_status "System Redis not running (OK)"
 
 # Installation begins here
-print_status "Installing Dispatcher with PREFIX: $PREFIX"
+print_status "Installing $BRAND_APP_NAME with PREFIX: $PREFIX"
 
 # Create directory structure
 print_status "Creating directory structure..."
@@ -389,9 +368,6 @@ fi
 # Create database configuration
 create_database_config
 
-# Create frontend configuration
-create_frontend_config
-
 # Create SSL certificates
 print_status "Creating SSL certificates..."
 SSL_DIR="$PREFIX/etc/ssl"
@@ -400,7 +376,7 @@ if [[ ! -f "$SSL_DIR/cert.pem" ]] || [[ ! -f "$SSL_DIR/key.pem" ]]; then
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
         -keyout "$SSL_DIR/key.pem" \
         -out "$SSL_DIR/cert.pem" \
-        -subj "/C=US/ST=State/L=City/O=Dispatcher/CN=localhost"
+        -subj "/C=US/ST=State/L=City/O=$BRAND_APP_NAME/CN=localhost"
     print_status "SSL certificates created in $SSL_DIR/"
 else
     print_status "SSL certificates already exist"
@@ -425,7 +401,7 @@ echo
 echo "Configuration files:"
 echo "  - $PREFIX/etc/.ports         # Port configuration"
 echo "  - $PREFIX/etc/database.json  # Database settings"
-echo "  - $PREFIX/etc/config.json    # Frontend settings"
+echo "  - $SCRIPT_DIR/branding.json  # Branding (single source of truth)"
 echo
 print_warning "Next steps:"
 echo "1. Start backend:    PREFIX=$PREFIX ./start_backend.sh"

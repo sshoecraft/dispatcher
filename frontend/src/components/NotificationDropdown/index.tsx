@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router'
+import { useConfig } from '@/hooks'
 
 interface Notification {
   id: string
@@ -21,6 +22,8 @@ interface NotificationDropdownProps {
 const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   onNotificationCountChange,
 }) => {
+  const { storageNamespace } = useConfig()
+  const notificationStateKey = `${storageNamespace}-notification-state`
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const location = useLocation()
@@ -28,7 +31,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   // Load notification state from localStorage
   const loadNotificationState = () => {
     try {
-      const saved = localStorage.getItem('dispatcher-notification-state')
+      const saved = localStorage.getItem(notificationStateKey)
       return saved ? JSON.parse(saved) : {}
     } catch (error) {
       console.error('Error loading notification state:', error)
@@ -41,7 +44,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     state: Record<string, { read: boolean; cleared: boolean }>
   ) => {
     try {
-      localStorage.setItem('dispatcher-notification-state', JSON.stringify(state))
+      localStorage.setItem(notificationStateKey, JSON.stringify(state))
     } catch (error) {
       console.error('Error saving notification state:', error)
     }

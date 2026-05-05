@@ -1,15 +1,12 @@
 #!/bin/bash
-# Automatic startup script for Dispatcher
-# Starts backend, waits for it to be ready, then starts frontend
+# Automatic startup script: starts backend, waits, then frontend.
+# Branding/PREFIX come from branding.json via branding.sh.
 
 set -e
 
-# Get the directory where this script is located (the repo directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CWD="$SCRIPT_DIR"
-
-# Set PREFIX - expand ~ to actual home directory
-export PREFIX="${PREFIX:-$HOME/.dispatcher}"
+source "$SCRIPT_DIR/branding.sh"
 
 # Ensure PATH includes common locations for tools
 export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
@@ -30,7 +27,7 @@ FRONTEND_LOG="$LOG_DIR/frontend.log"
 # Ensure log directory exists
 mkdir -p "$LOG_DIR"
 
-echo "Starting Dispatcher at $(date)"
+echo "Starting $BRAND_APP_NAME at $(date)"
 
 # Start backend
 echo "Starting backend..."
@@ -123,8 +120,8 @@ if ! (lsof -Pi :$NGINX_HTTPS 2>/dev/null | grep -q LISTEN || lsof -Pi :$NGINX_HT
     fi
 fi
 
-echo "Dispatcher startup complete at $(date)"
-echo "Dispatcher services:"
+echo "$BRAND_APP_NAME startup complete at $(date)"
+echo "$BRAND_APP_NAME services:"
 echo "  Backend (FastAPI): port $FASTAPI"
 lsof -Pi :$FASTAPI 2>/dev/null | grep LISTEN || echo "    (not detected)"
 echo "  Frontend (nginx): ports $NGINX_HTTP/$NGINX_HTTPS"

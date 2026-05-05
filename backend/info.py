@@ -1,12 +1,40 @@
 
+import json
 import os
 import socket
 from output import output
 
+# Single source of truth for branding/identity. The fork only edits this file
+# (and swaps SVGs in frontend/public/branding/) — no source-code changes.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_BRANDING_PATH = os.path.join(_REPO_ROOT, 'branding.json')
+
+_BRANDING_DEFAULTS = {
+	"slug": "dispatcher",
+	"appName": "Dispatcher",
+	"appShortName": "Dispatcher",
+	"htmlTitle": "Dispatcher",
+}
+
+
+def _load_branding():
+	try:
+		with open(_BRANDING_PATH, 'r') as f:
+			data = json.load(f)
+		return {**_BRANDING_DEFAULTS, **data}
+	except (OSError, ValueError) as e:
+		output.warning(f"Could not load {_BRANDING_PATH}: {e}; using defaults")
+		return dict(_BRANDING_DEFAULTS)
+
+
 class Info:
 	def __init__(self):
-		self.name = "dispatcher"
-		self.desc = "see: name"
+		self.branding = _load_branding()
+		# slug is the lowercase identifier used for paths (~/.<slug>),
+		# log labels, and any system-level naming.
+		self.name = self.branding["slug"]
+		self.app_name = self.branding["appName"]
+		self.desc = self.branding.get("appShortName", self.app_name)
 		self.version = "1.1"
 		self.prefix = None
 		self.http_port = int(os.getenv('NGINX_HTTP', '80'))

@@ -1,15 +1,13 @@
 #!/bin/bash
 
-export PREFIX="${PREFIX:-$HOME/.dispatcher}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/branding.sh"
 backend_dir=backend
 
 # Source port configuration
 if [ -f "$PREFIX/etc/.ports" ]; then
     source "$PREFIX/etc/.ports"
 fi
-
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd ${backend_dir} || exit 1
 

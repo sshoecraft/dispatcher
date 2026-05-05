@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { useConfig } from '@/hooks'
 import reactLogo from '@/assets/react.svg'
 import viteLogo from '/vite.svg'
 import axiosLogo from '@/assets/axios.svg'
@@ -57,7 +58,8 @@ const stack: Tool[] = [
 ]
 
 function Stack() {
-  const [message, setMessage] = useState('Welcome to Dispatcher!')
+  const { appName } = useConfig()
+  const [message, setMessage] = useState(`Welcome to ${appName}!`)
 
   const mouseHoverHandler = (tool: Tool) => {
     setMessage(`${tool.name} v${tool.version.substring(1)}`)

@@ -1,0 +1,22 @@
+{
+  "slug": "dispatcher",
+  "appName": "Dispatcher",
+  "appShortName": "Dispatcher",
+  "htmlTitle": "Dispatcher",
+  "logoUrl": "/branding/logo.svg",
+  "iconUrl": "/branding/icon.svg",
+  "storageNamespace": "dispatcher",
+  "primaryColor": "#0369a1",
+
+  "API_URL": "https://localhost:8443",
+  "ENV": "local",
+
+  "clientId": "",
+  "issuer": "",
+  "scopes": [
+    "openid",
+    "profile",
+    "email",
+    "offline_access"
+  ]
+}

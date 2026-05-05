@@ -3,15 +3,12 @@
 # Stop Frontend Server (nginx)
 # This script reliably stops the frontend nginx server
 
-# Set PREFIX with default fallback
-PREFIX=${PREFIX:-${HOME}/.dispatcher}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/branding.sh"
 
 echo "Stopping frontend server..."
 
 frontend_dir=frontend
-
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load port configuration if available
 if [ -f "$PREFIX/etc/.ports" ]; then
