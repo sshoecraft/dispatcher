@@ -2371,5 +2371,10 @@ if __name__ == "__main__":
 	else:
 		port = info.port
 
-	output.debug(f"port: {port}")
-	uvicorn.run(app, host="0.0.0.0", port=port, log_config=log_config)
+	# When fronted by a path-routing reverse proxy (e.g. portd at /<slug>),
+	# UVICORN_ROOT_PATH=/<slug> makes FastAPI generate URLs that include the
+	# prefix (Swagger UI's openapi.json link, redirects, etc.).
+	root_path = os.environ.get("UVICORN_ROOT_PATH", "")
+
+	output.debug(f"port: {port} root_path: {root_path!r}")
+	uvicorn.run(app, host="0.0.0.0", port=port, root_path=root_path, log_config=log_config)

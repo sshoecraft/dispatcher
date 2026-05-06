@@ -1,92 +1,117 @@
 #!/bin/bash
 
-# Stop Frontend Server (nginx)
-# This script reliably stops the frontend nginx server
+# Stop frontend nginx server.
+# Reads state files written by start_frontend.sh to know what to clean up:
+#   $PREFIX/tmp/nginx.port         - allocated port (portd mode)
+#   $PREFIX/tmp/nginx.portd-name   - portd service name (portd mode)
+#   $PREFIX/tmp/nginx.pid.path     - graceful shutdown PID
+#   $PREFIX/tmp/nginx.config.path  - graceful shutdown config path
+# Falls back to .ports HTTP/HTTPS cleanup when no state files exist.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/branding.sh"
 
-echo "Stopping frontend server..."
+echo "🛑 Stopping $BRAND_APP_NAME frontend..."
 
-frontend_dir=frontend
+NGINX_CONFIG_FILE="$PREFIX/etc/nginx.conf"
+NGINX_PID_PATH_FILE="$PREFIX/tmp/nginx.pid.path"
+NGINX_CONFIG_PATH_FILE="$PREFIX/tmp/nginx.config.path"
+NGINX_PORT_FILE="$PREFIX/tmp/nginx.port"
+PORTD_NAME_FILE="$PREFIX/tmp/nginx.portd-name"
+PORTD_ADMIN="${PORTD_ADMIN:-http://localhost:2019}"
 
-# Load port configuration if available
-if [ -f "$PREFIX/etc/.ports" ]; then
+# Resolve which ports might be in use: portd-allocated (from state file)
+# or direct-mode HTTP/HTTPS from .ports.
+PORTS_TO_CHECK=()
+if [ -f "$NGINX_PORT_FILE" ]; then
+    PORTS_TO_CHECK+=("$(cat "$NGINX_PORT_FILE" 2>/dev/null)")
+elif [ -f "$PREFIX/etc/.ports" ]; then
     source "$PREFIX/etc/.ports"
-    echo "📋 Using configured ports: HTTP=$NGINX_HTTP, HTTPS=$NGINX_HTTPS"
+    PORTS_TO_CHECK+=("$NGINX_HTTP" "$NGINX_HTTPS")
 else
-    echo "⚠️  No port configuration found, using defaults"
-    NGINX_HTTP=8081
-    NGINX_HTTPS=9443
+    PORTS_TO_CHECK+=("8081" "9443")
 fi
 
-# Method 1: Try graceful shutdown using nginx PID and config if available
-if [ -f "$PREFIX/tmp/nginx.pid.path" ] && [ -f "$PREFIX/tmp/nginx.config.path" ]; then
-    NGINX_PID=$(cat $PREFIX/tmp/nginx.pid.path 2>/dev/null)
-    NGINX_CONFIG=$(cat $PREFIX/tmp/nginx.config.path 2>/dev/null)
-    
-    if [ ! -z "$NGINX_PID" ] && [ ! -z "$NGINX_CONFIG" ] && [ -f "$NGINX_CONFIG" ]; then
-        echo "Gracefully stopping nginx with PID $NGINX_PID..."
-        /usr/sbin/nginx -s quit -c $NGINX_CONFIG 2>/dev/null || true
+echo "📋 Ports: ${PORTS_TO_CHECK[*]}"
+
+# Deregister from portd if we registered there. Best-effort.
+if [ -f "$PORTD_NAME_FILE" ]; then
+    PORTD_NAME=$(cat "$PORTD_NAME_FILE" 2>/dev/null)
+    if [ -n "$PORTD_NAME" ] && curl -sf -o /dev/null "$PORTD_ADMIN/portd/services" 2>/dev/null; then
+        DEREG_PAYLOAD=$(printf '{"name":"%s"}' "$PORTD_NAME")
+        if curl -sf -o /dev/null -X DELETE "$PORTD_ADMIN/portd/deregister" \
+            -H "Content-Type: application/json" -d "$DEREG_PAYLOAD" 2>/dev/null; then
+            echo "📡 Deregistered \"$PORTD_NAME\" from portd"
+        fi
+    fi
+fi
+
+# Find an nginx binary for graceful shutdown
+NGINX_BIN=""
+for nginx_path in "/usr/sbin/nginx" "/usr/bin/nginx" "/usr/local/sbin/nginx" "/usr/local/bin/nginx" "/opt/homebrew/bin/nginx"; do
+    if [ -x "$nginx_path" ]; then
+        NGINX_BIN="$nginx_path"
+        break
+    fi
+done
+[ -z "$NGINX_BIN" ] && command -v nginx &> /dev/null && NGINX_BIN=$(command -v nginx)
+
+# Method 1: Graceful shutdown via saved PID + config path
+if [ -f "$NGINX_PID_PATH_FILE" ] && [ -f "$NGINX_CONFIG_PATH_FILE" ]; then
+    NGINX_PID=$(cat "$NGINX_PID_PATH_FILE" 2>/dev/null)
+    NGINX_CONFIG=$(cat "$NGINX_CONFIG_PATH_FILE" 2>/dev/null)
+    if [ -n "$NGINX_PID" ] && [ -n "$NGINX_CONFIG" ] && [ -f "$NGINX_CONFIG" ] && [ -n "$NGINX_BIN" ]; then
+        echo "Gracefully stopping nginx (PID $NGINX_PID)..."
+        "$NGINX_BIN" -s quit -c "$NGINX_CONFIG" 2>/dev/null || true
         sleep 2
     fi
 fi
 
-# Method 2: Kill by process patterns (look for nginx with our config path)
-echo "Killing nginx processes for frontend..."
-pkill -f "nginx.*$PREFIX/etc/nginx.conf" 2>/dev/null || true
+# Method 2: Kill by config-path pattern
+echo "Killing nginx processes referencing $NGINX_CONFIG_FILE..."
+pkill -f "nginx.*$NGINX_CONFIG_FILE" 2>/dev/null || true
 
-# Method 3: Kill processes on configured ports
-echo "Killing processes on ports $NGINX_HTTP and $NGINX_HTTPS..."
-PIDS_HTTP=$(lsof -Pi :$NGINX_HTTP 2>/dev/null | grep LISTEN | awk '{print $2}' | sort -u)
-PIDS_HTTPS=$(lsof -Pi :$NGINX_HTTPS 2>/dev/null | grep LISTEN | awk '{print $2}' | sort -u)
-if [ ! -z "$PIDS_HTTP" ]; then
-    echo "Killing processes on port $NGINX_HTTP: $PIDS_HTTP"
-    kill -9 $PIDS_HTTP 2>/dev/null || true
-fi
-if [ ! -z "$PIDS_HTTPS" ]; then
-    echo "Killing processes on port $NGINX_HTTPS: $PIDS_HTTPS"
-    kill -9 $PIDS_HTTPS 2>/dev/null || true
-fi
+# Method 3: Kill anything on configured ports
+for port in "${PORTS_TO_CHECK[@]}"; do
+    [ -z "$port" ] && continue
+    PIDS=$(lsof -Pi :"$port" 2>/dev/null | grep LISTEN | awk '{print $2}' | sort -u)
+    if [ -n "$PIDS" ]; then
+        echo "Killing processes on port $port: $PIDS"
+        kill -9 $PIDS 2>/dev/null || true
+    fi
+done
 
-# Wait for processes to terminate
 sleep 2
 
-# Method 4: Force kill any remaining nginx processes related to frontend
-echo "Checking for remaining processes..."
-REMAINING_NGINX=$(ps aux | grep -E "nginx.*$PREFIX/etc/nginx.conf" | grep -v grep | awk '{print $2}')
-
-if [ ! -z "$REMAINING_NGINX" ]; then
-    echo "Force killing remaining nginx processes: $REMAINING_NGINX"
-    kill -9 $REMAINING_NGINX 2>/dev/null || true
+# Method 4: Force kill stragglers
+REMAINING=$(ps aux | grep -E "nginx.*$NGINX_CONFIG_FILE" | grep -v grep | awk '{print $2}')
+if [ -n "$REMAINING" ]; then
+    echo "Force killing remaining nginx: $REMAINING"
+    kill -9 $REMAINING 2>/dev/null || true
 fi
 
-# Clean up temporary files
-echo "Cleaning up temporary files..."
-rm -f $PREFIX/tmp/nginx.pid.path 2>/dev/null || true
-rm -f $PREFIX/tmp/nginx.config.path 2>/dev/null || true
-rm -f $PREFIX/etc/nginx.conf 2>/dev/null || true
-rm -f $PREFIX/tmp/nginx.pid 2>/dev/null || true
-
-# SSL certificates are preserved across restarts (removed cleanup)
+# Cleanup state files (SSL certs in $PREFIX/etc/ssl preserved across restarts)
+echo "Cleaning up state files..."
+rm -f "$NGINX_PID_PATH_FILE" "$NGINX_CONFIG_PATH_FILE" "$NGINX_CONFIG_FILE" \
+      "$NGINX_PORT_FILE" "$PORTD_NAME_FILE" "$PREFIX/tmp/nginx.pid" 2>/dev/null || true
 
 # Final verification
 sleep 1
-FINAL_CHECK_NGINX=$(ps aux | grep -E "nginx.*$PREFIX/etc/nginx.conf" | grep -v grep)
-FINAL_CHECK_PORTS=$(lsof -Pi :$NGINX_HTTP 2>/dev/null | grep LISTEN; lsof -Pi :$NGINX_HTTPS 2>/dev/null | grep LISTEN)
+FINAL_NGINX=$(ps aux | grep -E "nginx.*$NGINX_CONFIG_FILE" | grep -v grep)
+FINAL_PORTS=""
+for port in "${PORTS_TO_CHECK[@]}"; do
+    [ -z "$port" ] && continue
+    res=$(lsof -Pi :"$port" 2>/dev/null | grep LISTEN)
+    [ -n "$res" ] && FINAL_PORTS="$FINAL_PORTS$res
+"
+done
 
-if [ -z "$FINAL_CHECK_NGINX" ] && [ -z "$FINAL_CHECK_PORTS" ]; then
-    echo "✅ All frontend processes stopped successfully"
+if [ -z "$FINAL_NGINX" ] && [ -z "$FINAL_PORTS" ]; then
+    echo "✅ Frontend stopped successfully"
     exit 0
 else
     echo "❌ Some processes may still be running:"
-    if [ ! -z "$FINAL_CHECK_NGINX" ]; then
-        echo "Nginx processes:"
-        echo "$FINAL_CHECK_NGINX"
-    fi
-    if [ ! -z "$FINAL_CHECK_PORTS" ]; then
-        echo "Processes on ports $NGINX_HTTP/$NGINX_HTTPS:"
-        echo "$FINAL_CHECK_PORTS"
-    fi
+    [ -n "$FINAL_NGINX" ] && { echo "  nginx:"; echo "$FINAL_NGINX"; }
+    [ -n "$FINAL_PORTS" ] && { echo "  ports:"; echo "$FINAL_PORTS"; }
     exit 1
 fi
