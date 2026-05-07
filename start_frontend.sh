@@ -28,26 +28,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/branding.sh"
 
-# Check setup completed
-PORTS_FILE="$PREFIX/etc/.ports"
-if [ ! -f "$PORTS_FILE" ]; then
-    echo "❌ Error: Setup not completed!"
-    echo ""
-    echo "Please run setup.sh first to initialize the system:"
-    echo "  ./setup.sh"
-    exit 1
-fi
-
-echo "✅ Setup verified: Found port configuration"
-
 frontend_dir=frontend
 
 echo "🚀 Starting $BRAND_APP_NAME Frontend Server"
 echo "=================================="
-
-# Load port configuration (created by setup.sh)
-source "$PORTS_FILE"
-echo "📋 Direct-mode ports: HTTP=$NGINX_HTTP, HTTPS=$NGINX_HTTPS, FastAPI=$FASTAPI"
 
 # State files
 NGINX_CONFIG="$PREFIX/etc/nginx.conf"
@@ -56,7 +40,8 @@ NGINX_CONFIG_PATH_FILE="$PREFIX/tmp/nginx.config.path"
 NGINX_PORT_FILE="$PREFIX/tmp/nginx.port"
 PORTD_NAME_FILE="$PREFIX/tmp/nginx.portd-name"
 
-# portd integration
+# portd integration. Detect first so we can decide whether direct-mode
+# config (.ports, SSL certs) is required.
 PORTD_ADMIN="${PORTD_ADMIN:-http://localhost:2019}"
 PORTD_FRONTEND_NAME="${PORTD_FRONTEND_NAME:-$BRAND_SLUG}"
 PORTD_BACKEND_NAME="${PORTD_BACKEND_NAME:-${BRAND_SLUG}-backend}"
@@ -64,6 +49,25 @@ USE_PORTD=false
 if curl -sf -o /dev/null "$PORTD_ADMIN/portd/services" 2>/dev/null; then
     USE_PORTD=true
 fi
+
+# Direct mode requires .ports (created by setup.sh). portd allocates its
+# own ports dynamically and doesn't need it.
+PORTS_FILE="$PREFIX/etc/.ports"
+if [ "$USE_PORTD" != "true" ]; then
+    if [ ! -f "$PORTS_FILE" ]; then
+        echo "❌ Error: Setup not completed (and portd is not running)."
+        echo ""
+        echo "Either start portd on :2019, or run setup.sh to initialize"
+        echo "direct mode:"
+        echo "  ./setup.sh"
+        exit 1
+    fi
+    source "$PORTS_FILE"
+    echo "📋 Direct-mode ports: HTTP=$NGINX_HTTP, HTTPS=$NGINX_HTTPS, FastAPI=$FASTAPI"
+fi
+
+# Always need PREFIX dirs that hold runtime state, regardless of mode.
+mkdir -p "$PREFIX/etc" "$PREFIX/logs" "$PREFIX/tmp" "$PREFIX/www"
 
 cd "$SCRIPT_DIR/${frontend_dir}"
 echo "📁 Frontend directory: $(pwd)"

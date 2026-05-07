@@ -280,8 +280,21 @@ if systemctl is-active --quiet redis-server 2>/dev/null || systemctl is-active -
 fi
 print_status "System Redis not running (OK)"
 
+# Detect portd. In portd mode, skip artifacts that direct mode needs but
+# portd does not: .ports (portd allocates dynamically) and self-signed SSL
+# certs (portd terminates TLS at the public edge; the portd→nginx hop is
+# loopback HTTP).
+PORTD_ADMIN="${PORTD_ADMIN:-http://localhost:2019}"
+USE_PORTD=false
+if curl -sf -o /dev/null "$PORTD_ADMIN/portd/services" 2>/dev/null; then
+    USE_PORTD=true
+fi
+
 # Installation begins here
 print_status "Installing $BRAND_APP_NAME with PREFIX: $PREFIX"
+if [[ "$USE_PORTD" == "true" ]]; then
+    print_status "portd detected at $PORTD_ADMIN — skipping .ports and SSL cert generation"
+fi
 
 # Create directory structure
 print_status "Creating directory structure..."
@@ -356,30 +369,34 @@ cd frontend
 npm install
 cd ..
 
-# Initialize port configuration
-print_status "Initializing port configuration..."
-PREFIX="$PREFIX" ./port_manager.sh initialize
+# Initialize port configuration (direct mode only — portd allocates dynamically)
+if [[ "$USE_PORTD" != "true" ]]; then
+    print_status "Initializing port configuration..."
+    PREFIX="$PREFIX" ./port_manager.sh initialize
 
-if [[ ! -f "$PREFIX/etc/.ports" ]]; then
-    print_error "Failed to generate port configuration"
-    exit 1
+    if [[ ! -f "$PREFIX/etc/.ports" ]]; then
+        print_error "Failed to generate port configuration"
+        exit 1
+    fi
 fi
 
 # Create database configuration
 create_database_config
 
-# Create SSL certificates
-print_status "Creating SSL certificates..."
-SSL_DIR="$PREFIX/etc/ssl"
-if [[ ! -f "$SSL_DIR/cert.pem" ]] || [[ ! -f "$SSL_DIR/key.pem" ]]; then
-    print_status "Creating self-signed SSL certificate..."
-    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout "$SSL_DIR/key.pem" \
-        -out "$SSL_DIR/cert.pem" \
-        -subj "/C=US/ST=State/L=City/O=$BRAND_APP_NAME/CN=localhost"
-    print_status "SSL certificates created in $SSL_DIR/"
-else
-    print_status "SSL certificates already exist"
+# Create SSL certificates (direct mode only — portd terminates TLS upstream)
+if [[ "$USE_PORTD" != "true" ]]; then
+    print_status "Creating SSL certificates..."
+    SSL_DIR="$PREFIX/etc/ssl"
+    if [[ ! -f "$SSL_DIR/cert.pem" ]] || [[ ! -f "$SSL_DIR/key.pem" ]]; then
+        print_status "Creating self-signed SSL certificate..."
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout "$SSL_DIR/key.pem" \
+            -out "$SSL_DIR/cert.pem" \
+            -subj "/C=US/ST=State/L=City/O=$BRAND_APP_NAME/CN=localhost"
+        print_status "SSL certificates created in $SSL_DIR/"
+    else
+        print_status "SSL certificates already exist"
+    fi
 fi
 
 print_status "Setup complete!"
@@ -396,12 +413,20 @@ echo "  - $PREFIX/logs/       # Log files"
 echo "  - $PREFIX/data/       # Application data"
 echo "  - $PREFIX/tmp/        # Temporary files"
 echo "  - $PREFIX/venv/       # Python virtual environment"
-echo "  - $PREFIX/etc/ssl/    # SSL certificates"
+if [[ "$USE_PORTD" != "true" ]]; then
+    echo "  - $PREFIX/etc/ssl/    # SSL certificates"
+fi
 echo
 echo "Configuration files:"
-echo "  - $PREFIX/etc/.ports         # Port configuration"
+if [[ "$USE_PORTD" != "true" ]]; then
+    echo "  - $PREFIX/etc/.ports         # Port configuration"
+fi
 echo "  - $PREFIX/etc/database.json  # Database settings"
 echo "  - $SCRIPT_DIR/branding.json  # Branding (single source of truth)"
+if [[ "$USE_PORTD" == "true" ]]; then
+    echo
+    echo "portd mode: ports allocated dynamically; TLS terminated by portd"
+fi
 echo
 print_warning "Next steps:"
 echo "1. Start backend:    PREFIX=$PREFIX ./start_backend.sh"

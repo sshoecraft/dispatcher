@@ -15,6 +15,10 @@ PID_FILE="$PREFIX/tmp/backend.pid"
 PORT_FILE="$PREFIX/tmp/backend.port"
 PORTD_NAME_FILE="$PREFIX/tmp/backend.portd-name"
 
+# Ensure runtime dirs exist (portd mode skips setup.sh; this is harmless if
+# they already exist).
+mkdir -p "$PREFIX/etc" "$PREFIX/logs" "$PREFIX/tmp"
+
 # portd integration. If portd is up on :2019, ask it to allocate a port and
 # register us so the frontend (and any other client) can reach us via portd's
 # path-based routing without coordinating port numbers. If portd is down, fall
