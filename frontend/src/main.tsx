@@ -21,7 +21,7 @@ loadConfig().then((config) => {
     <StrictMode>
       <ConfigProvider config={config}>
         <ThemeProvider>
-          <BrowserRouter>
+          <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
             <AppRoutes />
           </BrowserRouter>
         </ThemeProvider>

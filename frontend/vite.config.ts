@@ -7,10 +7,15 @@ import tailwindcss from '@tailwindcss/vite'
 const BRANDING_FILE = path.resolve(__dirname, '../branding.json')
 
 // Serves the repo-root branding.json at /config.json (dev) and copies it
-// into the build output at dist/config.json (build). Single source of truth.
+// into the build output at <outDir>/config.json (build). Single source of
+// truth. Honors --outDir so callers can build into any directory.
 function brandingPlugin(): Plugin {
+  let outDir = 'dist'
   return {
     name: 'dispatcher-branding',
+    configResolved(config) {
+      outDir = config.build.outDir
+    },
     configureServer(server) {
       server.middlewares.use('/config.json', (req, res, next) => {
         if (req.method !== 'GET') return next()
@@ -24,7 +29,9 @@ function brandingPlugin(): Plugin {
       })
     },
     closeBundle() {
-      const dest = path.resolve(__dirname, 'dist/config.json')
+      const dest = path.isAbsolute(outDir)
+        ? path.join(outDir, 'config.json')
+        : path.resolve(__dirname, outDir, 'config.json')
       fs.mkdirSync(path.dirname(dest), { recursive: true })
       fs.copyFileSync(BRANDING_FILE, dest)
     },

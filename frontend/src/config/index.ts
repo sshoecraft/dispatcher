@@ -38,15 +38,29 @@ const DEFAULTS: AppConfig = {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
 }
 
+// Rewrites root-anchored asset paths (e.g. "/branding/logo.svg") to be
+// relative to the SPA's mount point. Needed for portd mode where the SPA
+// lives at /<slug>/, not /. No-op in direct mode (BASE_URL is "/").
+function withBase(url: string): string {
+  if (!url.startsWith('/')) return url
+  return `${import.meta.env.BASE_URL}${url.slice(1)}`
+}
+
 export async function loadConfig(): Promise<AppConfig> {
-  const response = await axios.get('/config.json')
+  // Use Vite's BASE_URL so the request resolves relative to the SPA's
+  // mount point (e.g. /dispatcher/config.json in portd mode, /config.json
+  // when served at root).
+  const response = await axios.get(`${import.meta.env.BASE_URL}config.json`)
 
   if (response.status != 200) {
     showErrorToast('Failed to load config')
     throw new Error('Failed to load config')
   }
 
-  return { ...DEFAULTS, ...response.data }
+  const merged: AppConfig = { ...DEFAULTS, ...response.data }
+  merged.logoUrl = withBase(merged.logoUrl)
+  merged.iconUrl = withBase(merged.iconUrl)
+  return merged
 }
 
 export { default as okta } from './okta'
