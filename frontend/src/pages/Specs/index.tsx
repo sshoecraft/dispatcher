@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { apiUrl } from '@/lib/api'
 import { toast } from 'react-toastify'
 import ResizableTable from '@/components/ResizableTable'
 
@@ -46,7 +47,7 @@ const Specs: React.FC = () => {
   const fetchSpecs = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/specs?page=${page}&per_page=20`)
+      const response = await fetch(apiUrl(`/api/specs?page=${page}&per_page=20`))
       if (!response.ok) throw new Error('Failed to fetch job specifications')
       
       const data: SpecsResponse = await response.json()
@@ -62,7 +63,7 @@ const Specs: React.FC = () => {
 
   const fetchAvailableQueues = async () => {
     try {
-      const response = await fetch('/api/queues')
+      const response = await fetch(apiUrl('/api/queues'))
       if (response.ok) {
         const data = await response.json()
         if (data.queues && Array.isArray(data.queues)) {
@@ -84,7 +85,7 @@ const Specs: React.FC = () => {
     if (!confirm('Are you sure you want to delete this job specification?')) return
     
     try {
-      const response = await fetch(`/api/specs/${jobId}`, {
+      const response = await fetch(apiUrl(`/api/specs/${jobId}`), {
         method: 'DELETE'
       })
       
@@ -131,7 +132,7 @@ const Specs: React.FC = () => {
         }
       }
       
-      const response = await fetch('/api/jobs/run', {
+      const response = await fetch(apiUrl('/api/jobs/run'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -175,7 +176,7 @@ const Specs: React.FC = () => {
 
   const handleCreate = async (dataToSubmit = formData) => {
     try {
-      const response = await fetch('/api/specs', {
+      const response = await fetch(apiUrl('/api/specs'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dataToSubmit)
@@ -197,7 +198,7 @@ const Specs: React.FC = () => {
     if (!editingJob) return
     
     try {
-      const response = await fetch(`/api/specs/${editingJob.id}`, {
+      const response = await fetch(apiUrl(`/api/specs/${editingJob.id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dataToSubmit)

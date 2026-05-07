@@ -1,3 +1,5 @@
+import { apiUrl } from '@/lib/api'
+
 interface LoginResponse {
   access_token: string
   token_type: string
@@ -34,7 +36,7 @@ export const signIn = async (
   authSource: string = 'local'
 ): Promise<boolean> => {
   try {
-    const response = await fetch('/api/auth/login', {
+    const response = await fetch(apiUrl('/api/auth/login'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -68,7 +70,7 @@ export const signOut = async (): Promise<void> => {
   try {
     const token = localStorage.getItem('token')
     if (token) {
-      await fetch('/api/auth/logout', {
+      await fetch(apiUrl('/api/auth/logout'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -157,7 +159,7 @@ export const apiCall = async (
     headers['Authorization'] = `Bearer ${token}`
   }
   
-  const response = await fetch(url, {
+  const response = await fetch(apiUrl(url), {
     ...options,
     headers,
   })

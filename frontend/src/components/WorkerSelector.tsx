@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { apiUrl } from '@/lib/api'
 import { toast } from 'react-toastify'
 
 interface Worker {
@@ -30,7 +31,7 @@ const WorkerSelector: React.FC<WorkerSelectorProps> = ({ queueId, onAssignmentCh
     setLoading(true)
     try {
       // First, get all workers
-      const allWorkersResponse = await fetch('/api/workers')
+      const allWorkersResponse = await fetch(apiUrl('/api/workers'))
       if (allWorkersResponse.ok) {
         const data = await allWorkersResponse.json()
         setAllWorkers(data.workers || [])
@@ -38,7 +39,7 @@ const WorkerSelector: React.FC<WorkerSelectorProps> = ({ queueId, onAssignmentCh
 
       // If editing a queue, get assigned workers
       if (queueId) {
-        const assignedResponse = await fetch(`/api/queues/${queueId}/workers`)
+        const assignedResponse = await fetch(apiUrl(`/api/queues/${queueId}/workers`))
         if (assignedResponse.ok) {
           const data = await assignedResponse.json()
           const assignedIds = new Set<number>((data.workers || []).map((w: Worker) => w.id))
@@ -59,7 +60,7 @@ const WorkerSelector: React.FC<WorkerSelectorProps> = ({ queueId, onAssignmentCh
       // Assign worker
       if (queueId) {
         try {
-          const response = await fetch(`/api/queues/${queueId}/workers/${worker.id}`, {
+          const response = await fetch(apiUrl(`/api/queues/${queueId}/workers/${worker.id}`), {
             method: 'POST'
           })
           if (response.ok) {
@@ -82,7 +83,7 @@ const WorkerSelector: React.FC<WorkerSelectorProps> = ({ queueId, onAssignmentCh
       // Unassign worker
       if (queueId) {
         try {
-          const response = await fetch(`/api/queues/${queueId}/workers/${worker.id}`, {
+          const response = await fetch(apiUrl(`/api/queues/${queueId}/workers/${worker.id}`), {
             method: 'DELETE'
           })
           if (response.ok) {

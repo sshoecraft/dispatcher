@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { apiUrl } from '@/lib/api'
 import { toast } from 'react-toastify'
 import ResizableTable from '@/components/ResizableTable'
 import LogViewer from '@/components/LogViewer'
@@ -91,7 +92,7 @@ const Workers: React.FC = () => {
     params.append('page', page.toString())
     params.append('per_page', '20')
     
-    const newEventSource = new EventSource(`/api/workers/realtime?${params}`)
+    const newEventSource = new EventSource(apiUrl(`/api/workers/realtime?${params}`))
     
     newEventSource.onopen = () => {
       console.log('Real-time worker updates connected')
@@ -136,7 +137,7 @@ const Workers: React.FC = () => {
   const fetchWorkers = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/workers?page=${page}&per_page=20`)
+      const response = await fetch(apiUrl(`/api/workers?page=${page}&per_page=20`))
       if (!response.ok) throw new Error('Failed to fetch workers')
       
       const data: WorkersResponse = await response.json()
@@ -156,7 +157,7 @@ const Workers: React.FC = () => {
     if (!confirm('Are you sure you want to delete this worker?')) return
     
     try {
-      const response = await fetch(`/api/workers/${workerId}`, {
+      const response = await fetch(apiUrl(`/api/workers/${workerId}`), {
         method: 'DELETE'
       })
       
@@ -172,7 +173,7 @@ const Workers: React.FC = () => {
 
   const handleStart = async (workerId: number) => {
     try {
-      const response = await fetch(`/api/workers/${workerId}/start`, {
+      const response = await fetch(apiUrl(`/api/workers/${workerId}/start`), {
         method: 'POST'
       })
       
@@ -194,7 +195,7 @@ const Workers: React.FC = () => {
 
   const handleStop = async (workerId: number) => {
     try {
-      const response = await fetch(`/api/workers/${workerId}/stop`, {
+      const response = await fetch(apiUrl(`/api/workers/${workerId}/stop`), {
         method: 'POST'
       })
       
@@ -216,7 +217,7 @@ const Workers: React.FC = () => {
 
   const handlePause = async (workerId: number) => {
     try {
-      const response = await fetch(`/api/workers/${workerId}/pause`, {
+      const response = await fetch(apiUrl(`/api/workers/${workerId}/pause`), {
         method: 'POST'
       })
       
@@ -241,7 +242,7 @@ const Workers: React.FC = () => {
     if (!editingWorker) return
 
     try {
-      const response = await fetch(`/api/workers/${editingWorker.id}`, {
+      const response = await fetch(apiUrl(`/api/workers/${editingWorker.id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -272,7 +273,7 @@ const Workers: React.FC = () => {
     setLogsLoading(true)
     try {
       // Fetch logs from backend API endpoint
-      const response = await fetch(`/api/workers/${workerId}/logs`)
+      const response = await fetch(apiUrl(`/api/workers/${workerId}/logs`))
       if (!response.ok) throw new Error(`Failed to fetch logs from backend: ${response.status}`)
       const logs = await response.text()
       setWorkerLogs(logs)
@@ -288,7 +289,7 @@ const Workers: React.FC = () => {
   const clearWorkerLogs = async (workerId: number) => {
     try {
       // Clear logs via backend API endpoint
-      const response = await fetch(`/api/workers/${workerId}/logs/clear`, {
+      const response = await fetch(apiUrl(`/api/workers/${workerId}/logs/clear`), {
         method: 'POST'
       })
       if (!response.ok) throw new Error(`Failed to clear logs from backend: ${response.status}`)
@@ -335,7 +336,7 @@ const Workers: React.FC = () => {
 
     try {
       // Connect to backend API endpoint for log streaming
-      const newLogEventSource = new EventSource(`/api/workers/${id}/logs/stream`)
+      const newLogEventSource = new EventSource(apiUrl(`/api/workers/${id}/logs/stream`))
 
       newLogEventSource.onmessage = (event) => {
         setWorkerLogs((prev) => prev + event.data + '\n')
@@ -425,7 +426,7 @@ const Workers: React.FC = () => {
 
   const pollDeploymentStatus = async (deploymentId: string) => {
     try {
-      const response = await fetch(`/api/workers/deployment-status/${deploymentId}`)
+      const response = await fetch(apiUrl(`/api/workers/deployment-status/${deploymentId}`))
       if (!response.ok) {
         // Deployment might be completed and cleaned up
         return
@@ -502,7 +503,7 @@ const Workers: React.FC = () => {
     }
 
     try {
-      const response = await fetch('/api/workers', {
+      const response = await fetch(apiUrl('/api/workers'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -564,7 +565,7 @@ const Workers: React.FC = () => {
 
   const fetchMonitoringSettings = async () => {
     try {
-      const response = await fetch('/api/workers/monitoring')
+      const response = await fetch(apiUrl('/api/workers/monitoring'))
       if (!response.ok) throw new Error('Failed to fetch monitoring settings')
       const data = await response.json()
       setMonitoringInterval(data.interval || 30)
@@ -577,7 +578,7 @@ const Workers: React.FC = () => {
   const updateMonitoringInterval = async () => {
     setMonitoringLoading(true)
     try {
-      const response = await fetch('/api/workers/monitoring', {
+      const response = await fetch(apiUrl('/api/workers/monitoring'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ interval: monitoringInterval })

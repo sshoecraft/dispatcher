@@ -4,11 +4,13 @@ import { BrowserRouter } from 'react-router'
 
 import AppRoutes from '@/app/routes'
 import { loadConfig } from '@/config'
+import { setApiBase } from '@/lib/api'
 
 import '@/styles/index.css'
 import { ConfigProvider, ThemeProvider } from '@/contexts'
 
 loadConfig().then((config) => {
+  setApiBase(config.API_URL)
   document.title = config.htmlTitle
   document.documentElement.style.setProperty(
     '--color-primary-blue',

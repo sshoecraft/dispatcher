@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { apiUrl } from '@/lib/api'
 import { toast } from 'react-toastify'
 import ResizableTable from '@/components/ResizableTable'
 import WorkerSelector from '@/components/WorkerSelector'
@@ -91,7 +92,7 @@ const Queues: React.FC = () => {
     params.append('page', page.toString())
     params.append('per_page', '20')
     
-    const newEventSource = new EventSource(`/api/queues/realtime?${params}`)
+    const newEventSource = new EventSource(apiUrl(`/api/queues/realtime?${params}`))
     
     newEventSource.onopen = () => {
       console.log('Real-time queue updates connected')
@@ -105,7 +106,7 @@ const Queues: React.FC = () => {
         const queuesWithWorkers = await Promise.all(
           (data.queues || []).map(async (queue: Queue) => {
             try {
-              const workersResponse = await fetch(`/api/queues/${queue.id}/workers`)
+              const workersResponse = await fetch(apiUrl(`/api/queues/${queue.id}/workers`))
               if (workersResponse.ok) {
                 const workersData = await workersResponse.json()
                 return { ...queue, workers: workersData.workers || [] }
@@ -154,7 +155,7 @@ const Queues: React.FC = () => {
   const fetchQueues = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/queues?page=${page}&per_page=20`)
+      const response = await fetch(apiUrl(`/api/queues?page=${page}&per_page=20`))
       if (!response.ok) throw new Error('Failed to fetch queues')
       
       const data: QueuesResponse = await response.json()
@@ -163,7 +164,7 @@ const Queues: React.FC = () => {
       const queuesWithWorkers = await Promise.all(
         (data.queues || []).map(async (queue) => {
           try {
-            const workersResponse = await fetch(`/api/queues/${queue.id}/workers`)
+            const workersResponse = await fetch(apiUrl(`/api/queues/${queue.id}/workers`))
             if (workersResponse.ok) {
               const workersData = await workersResponse.json()
               return { ...queue, workers: workersData.workers || [] }
@@ -190,7 +191,7 @@ const Queues: React.FC = () => {
     if (!confirm('Are you sure you want to delete this queue?')) return
     
     try {
-      const response = await fetch(`/api/queues/${queueId}`, {
+      const response = await fetch(apiUrl(`/api/queues/${queueId}`), {
         method: 'DELETE'
       })
       
@@ -206,7 +207,7 @@ const Queues: React.FC = () => {
 
   const handleStart = async (queueId: number) => {
     try {
-      const response = await fetch(`/api/queues/${queueId}/start`, {
+      const response = await fetch(apiUrl(`/api/queues/${queueId}/start`), {
         method: 'POST'
       })
       
@@ -228,7 +229,7 @@ const Queues: React.FC = () => {
 
   const handleStop = async (queueId: number) => {
     try {
-      const response = await fetch(`/api/queues/${queueId}/stop`, {
+      const response = await fetch(apiUrl(`/api/queues/${queueId}/stop`), {
         method: 'POST'
       })
       
@@ -250,7 +251,7 @@ const Queues: React.FC = () => {
 
   const handlePause = async (queueId: number) => {
     try {
-      const response = await fetch(`/api/queues/${queueId}/pause`, {
+      const response = await fetch(apiUrl(`/api/queues/${queueId}/pause`), {
         method: 'POST'
       })
       
@@ -273,7 +274,7 @@ const Queues: React.FC = () => {
   const fetchQueueLogs = async (queueId: number) => {
     setLogsLoading(true)
     try {
-      const response = await fetch(`/api/queues/${queueId}/logs`)
+      const response = await fetch(apiUrl(`/api/queues/${queueId}/logs`))
       if (!response.ok) throw new Error('Failed to fetch logs')
       const logs = await response.text()
       setQueueLogs(logs)
@@ -288,7 +289,7 @@ const Queues: React.FC = () => {
 
   const clearQueueLogs = async (queueId: number) => {
     try {
-      const response = await fetch(`/api/queues/${queueId}/logs/clear`, {
+      const response = await fetch(apiUrl(`/api/queues/${queueId}/logs/clear`), {
         method: 'POST'
       })
       if (!response.ok) throw new Error('Failed to clear logs')
@@ -333,7 +334,7 @@ const Queues: React.FC = () => {
     // Don't clear existing logs - keep showing current content and append new content
     setLogsLoading(true)
 
-    const newLogEventSource = new EventSource(`/api/queues/${id}/logs/stream`)
+    const newLogEventSource = new EventSource(apiUrl(`/api/queues/${id}/logs/stream`))
 
     newLogEventSource.onmessage = (event) => {
       setQueueLogs((prev) => prev + event.data + '\n')
@@ -394,7 +395,7 @@ const Queues: React.FC = () => {
 
   const handleCreate = async () => {
     try {
-      const response = await fetch('/api/queues', {
+      const response = await fetch(apiUrl('/api/queues'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -408,7 +409,7 @@ const Queues: React.FC = () => {
       // Assign workers to the new queue if any were selected
       if (assignedWorkerIds.length > 0) {
         try {
-          await fetch(`/api/queues/${newQueue.id}/workers/bulk`, {
+          await fetch(apiUrl(`/api/queues/${newQueue.id}/workers/bulk`), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ worker_ids: assignedWorkerIds })
@@ -432,7 +433,7 @@ const Queues: React.FC = () => {
     if (!editingQueue) return
     
     try {
-      const response = await fetch(`/api/queues/${editingQueue.id}`, {
+      const response = await fetch(apiUrl(`/api/queues/${editingQueue.id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

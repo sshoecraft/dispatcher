@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { apiUrl } from '@/lib/api'
 import { useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
@@ -54,20 +55,20 @@ const Dashboard = () => {
       setLoading(true)
       
       // Fetch job statistics
-      const statsResponse = await fetch('/api/jobs/statistics/summary')
+      const statsResponse = await fetch(apiUrl('/api/jobs/statistics/summary'))
       if (!statsResponse.ok) throw new Error('Failed to fetch job statistics')
       const statsData = await statsResponse.json()
       setStats(statsData)
 
       // Fetch job specifications count
-      const jobSpecsResponse = await fetch('/api/specs?page=1&per_page=1')
+      const jobSpecsResponse = await fetch(apiUrl('/api/specs?page=1&per_page=1'))
       if (!jobSpecsResponse.ok) throw new Error('Failed to fetch job specifications')
       const jobSpecsData: JobSpecificationsResponse = await jobSpecsResponse.json()
       setJobDefsCount(jobSpecsData.total)
 
       // Fetch worker status
       try {
-        const workersResponse = await fetch('/api/workers')
+        const workersResponse = await fetch(apiUrl('/api/workers'))
         
         let worker_count = 0
         
@@ -84,7 +85,7 @@ const Dashboard = () => {
 
       // Fetch queue status
       try {
-        const queuesResponse = await fetch('/api/queues')
+        const queuesResponse = await fetch(apiUrl('/api/queues'))
         
         let queue_count = 0
         

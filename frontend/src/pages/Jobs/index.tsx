@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { apiUrl } from '@/lib/api'
 import { toast } from 'react-toastify'
 import LogViewer from '../../components/LogViewer'
 
@@ -103,7 +104,7 @@ const Queue = () => {
         params.append('exclude_status', 'Completed,Failed,Cancelled')
       }
 
-      const response = await fetch(`/api/jobs?${params}`)
+      const response = await fetch(apiUrl(`/api/jobs?${params}`))
       if (!response.ok) throw new Error('Failed to fetch jobs')
 
       const data: JobsResponse = await response.json()
@@ -146,7 +147,7 @@ const Queue = () => {
       params.append('exclude_status', 'Completed,Failed,Cancelled')
     }
 
-    const newEventSource = new EventSource(`/api/jobs/realtime?${params}`)
+    const newEventSource = new EventSource(apiUrl(`/api/jobs/realtime?${params}`))
 
     newEventSource.onopen = () => {
       console.log('Real-time job updates connected')
@@ -210,7 +211,7 @@ const Queue = () => {
 
   const fetchQueues = async () => {
     try {
-      const response = await fetch('/api/queues')
+      const response = await fetch(apiUrl('/api/queues'))
       if (!response.ok) throw new Error('Failed to fetch queues')
       const data: QueuesResponse = await response.json()
       setAvailableQueues(data.queues || [])
@@ -232,7 +233,7 @@ const Queue = () => {
 
     setMoveLoading(true)
     try {
-      const response = await fetch(`/api/jobs/${selectedMoveJobId}/move`, {
+      const response = await fetch(apiUrl(`/api/jobs/${selectedMoveJobId}/move`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -258,7 +259,7 @@ const Queue = () => {
     }
 
     try {
-      const response = await fetch(`/api/jobs/${jobId}/cancel`, { method: 'PUT' })
+      const response = await fetch(apiUrl(`/api/jobs/${jobId}/cancel`), { method: 'PUT' })
       if (!response.ok) throw new Error('Failed to cancel job')
       toast.success('Job cancelled successfully')
     } catch (error) {
@@ -273,7 +274,7 @@ const Queue = () => {
     }
 
     try {
-      const response = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' })
+      const response = await fetch(apiUrl(`/api/jobs/${jobId}`), { method: 'DELETE' })
       if (!response.ok) throw new Error('Failed to delete job')
       toast.success('Job deleted successfully')
       fetchJobs()
@@ -289,7 +290,7 @@ const Queue = () => {
     }
 
     try {
-      const response = await fetch(`/api/jobs/${jobId}/retry?user_id=system`, { method: 'PUT' })
+      const response = await fetch(apiUrl(`/api/jobs/${jobId}/retry?user_id=system`), { method: 'PUT' })
       if (!response.ok) throw new Error('Failed to restart job')
       const result = await response.json()
       toast.success(`Job restarted successfully. New job ID: ${result.new_job_id}`)
@@ -332,7 +333,7 @@ const Queue = () => {
     // Don't clear existing logs - keep showing current content and append new content
     setLogsLoading(true)
 
-    const newLogEventSource = new EventSource(`/api/jobs/${id}/logs/stream`)
+    const newLogEventSource = new EventSource(apiUrl(`/api/jobs/${id}/logs/stream`))
     let jobCompleted = false
 
     newLogEventSource.onmessage = (event) => {

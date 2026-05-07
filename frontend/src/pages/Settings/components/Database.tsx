@@ -1,4 +1,5 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { apiUrl } from '@/lib/api'
 import { RefreshCw, AlertCircle, CheckCircle, Eye, EyeOff, Database } from 'lucide-react';
 
 interface ConfigItem {
@@ -58,7 +59,7 @@ const SystemConfiguration = forwardRef<SystemConfigurationRef, SystemConfigurati
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/db');
+      const response = await fetch(apiUrl('/api/db'));
       if (!response.ok) {
         throw new Error(`Failed to load configurations: ${response.status}`);
       }
@@ -154,7 +155,7 @@ const SystemConfiguration = forwardRef<SystemConfigurationRef, SystemConfigurati
         dbUpdates[update.key] = update.value;
       }
 
-      const response = await fetch('/api/db', {
+      const response = await fetch(apiUrl('/api/db'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -226,7 +227,7 @@ const SystemConfiguration = forwardRef<SystemConfigurationRef, SystemConfigurati
       setInitializingDb(true);
       setError(null);
       
-      const response = await fetch('/api/db/initialize', {
+      const response = await fetch(apiUrl('/api/db/initialize'), {
         method: 'POST'
       });
       
