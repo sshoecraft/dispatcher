@@ -91,6 +91,7 @@ class WorkerCreateRequest(BaseModel):
     ssh_private_key: Optional[str] = Field(None, description="SSH private key")
     password: Optional[str] = Field(None, description="SSH password")
     provision: bool = Field(False, description="Auto-provision worker")
+    create_user: bool = Field(False, description="Create dedicated 'worker' user on remote (requires sudo)")
     max_jobs: int = Field(10, description="Maximum concurrent jobs")
 
 class WorkerUpdateRequest(BaseModel):
@@ -332,15 +333,14 @@ class Worker:
             output.error(f"Error finding worker wheel: {e}")
             raise e
 
-    def _deploy_worker_ssh_key(self, hostname: str, ssh_user: str, password: str, public_key: str) -> bool:
-        """Deploy worker's SSH public key to authorized_keys on remote host"""
+    def _create_user(self, hostname: str, ssh_user: str, password: str, ssh_key_info: Dict[str, Any]) -> str:
+        """Create a dedicated 'worker' user on the remote host using sudo"""
+        worker_user = "worker"
         try:
-            output.info(f"Attempting SSH connection to {ssh_user}@{hostname} for key deployment")
+            output.info(f"Creating worker user on {hostname} via {ssh_user}")
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            
-            # Connect using password authentication for initial setup
-            output.debug(f"SSH connection parameters: hostname={hostname}, username={ssh_user}, timeout=30")
+
             client.connect(
                 hostname=hostname,
                 username=ssh_user,
@@ -349,30 +349,89 @@ class Worker:
                 look_for_keys=False,
                 allow_agent=False
             )
+
+            # Check if worker user already exists
+            stdin, stdout, stderr = client.exec_command(f"id {worker_user}")
+            if stdout.channel.recv_exit_status() == 0:
+                output.info(f"Worker user '{worker_user}' already exists on {hostname}")
+            else:
+                # Create the worker user with home directory
+                cmd = f"echo '{password}' | sudo -S useradd -m -s /bin/bash {worker_user}"
+                stdin, stdout, stderr = client.exec_command(cmd)
+                exit_status = stdout.channel.recv_exit_status()
+                if exit_status != 0:
+                    error_output = stderr.read().decode()
+                    raise Exception(f"Failed to create worker user: {error_output}")
+                output.info(f"Created worker user '{worker_user}' on {hostname}")
+
+            # Create .ssh directory for worker user
+            cmd = f"echo '{password}' | sudo -S mkdir -p /home/{worker_user}/.ssh"
+            client.exec_command(cmd)
+
+            # Set ownership
+            cmd = f"echo '{password}' | sudo -S chown -R {worker_user}:{worker_user} /home/{worker_user}/.ssh"
+            client.exec_command(cmd)
+
+            # Set permissions
+            cmd = f"echo '{password}' | sudo -S chmod 700 /home/{worker_user}/.ssh"
+            client.exec_command(cmd)
+
+            client.close()
+            return worker_user
+
+        except Exception as e:
+            output.error(f"Error creating worker user on {hostname}: {e}")
+            raise e
+
+    def _deploy_worker_ssh_key(self, hostname: str, ssh_user: str, password: str, public_key: str, sudo_user: str = None) -> bool:
+        """Deploy worker's SSH public key to authorized_keys on remote host
+
+        If sudo_user is provided, we SSH as sudo_user and use sudo to write to ssh_user's authorized_keys
+        """
+        try:
+            connect_user = sudo_user if sudo_user else ssh_user
+            output.info(f"Attempting SSH connection to {connect_user}@{hostname} for key deployment")
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+            # Connect using password authentication for initial setup
+            output.debug(f"SSH connection parameters: hostname={hostname}, username={connect_user}, timeout=30")
+            client.connect(
+                hostname=hostname,
+                username=connect_user,
+                password=password,
+                timeout=30,
+                look_for_keys=False,
+                allow_agent=False
+            )
             output.info(f"SSH connection successful to {hostname}")
-            
-            # Ensure .ssh directory exists with proper permissions
-            client.exec_command('mkdir -p ~/.ssh && chmod 700 ~/.ssh')
-            
-            # Add public key to authorized_keys
-            command = f'echo "{public_key}" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
+
+            if sudo_user:
+                # Deploy key to a different user's authorized_keys using sudo
+                command = f"echo '{password}' | sudo -S bash -c 'echo \"{public_key}\" >> /home/{ssh_user}/.ssh/authorized_keys && chmod 600 /home/{ssh_user}/.ssh/authorized_keys && chown {ssh_user}:{ssh_user} /home/{ssh_user}/.ssh/authorized_keys'"
+            else:
+                # Ensure .ssh directory exists with proper permissions
+                client.exec_command('mkdir -p ~/.ssh && chmod 700 ~/.ssh')
+                # Add public key to authorized_keys
+                command = f'echo "{public_key}" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
+
             stdin, stdout, stderr = client.exec_command(command)
             exit_status = stdout.channel.recv_exit_status()
-            
+
             client.close()
-            
+
             if exit_status == 0:
-                output.info(f"SSH public key deployed successfully to {hostname}")
+                output.info(f"SSH public key deployed successfully to {hostname} for user {ssh_user}")
                 return True
             else:
                 error_output = stderr.read().decode()
                 output.error(f"Failed to deploy SSH key to {hostname}: {error_output}")
                 return False
-                
+
         except paramiko.ssh_exception.AuthenticationException as e:
-            output.error(f"SSH authentication failed for {ssh_user}@{hostname}: {e}")
+            output.error(f"SSH authentication failed for {connect_user}@{hostname}: {e}")
             output.error("Please verify username/password are correct and user can SSH to target host")
-            raise Exception(f"SSH authentication failed for {ssh_user}@{hostname}: {e}")
+            raise Exception(f"SSH authentication failed for {connect_user}@{hostname}: {e}")
         except paramiko.ssh_exception.NoValidConnectionsError as e:
             output.error(f"Could not connect to {hostname}: {e}")
             output.error("Please verify hostname/IP is reachable and SSH service is running")
@@ -466,7 +525,7 @@ class Worker:
             
             # Get app name for PREFIX
             app_name = info.name  # "dispatcher"
-            prefix_path = f"$HOME/{app_name}"
+            prefix_path = f"$HOME/.local/lib/dispatcher-worker"
             
             # Create PREFIX directory
             stdin, stdout, stderr = client.exec_command(f'mkdir -p {prefix_path}')
@@ -492,11 +551,8 @@ class Worker:
                 output.warning(f"Failed to upgrade pip: {error_output}")
                 # Continue anyway
             
-            # Create complete remote directory structure (bin, etc, lib, logs, venv)
+            # Create remote directory structure (only what worker needs)
             dirs_to_create = [
-                f'{prefix_path}/bin',
-                f'{prefix_path}/etc',
-                f'{prefix_path}/lib', 
                 f'{prefix_path}/logs/workers'
             ]
             
@@ -517,6 +573,116 @@ class Worker:
             output.error(f"Error setting up remote environment on {hostname}: {e}")
             raise e
 
+    def _setup_remote_environment_sudo(self, hostname: str, ssh_user: str, password: str, target_user: str) -> bool:
+        """Setup remote environment for target_user using sudo from ssh_user"""
+        try:
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+            client.connect(
+                hostname=hostname,
+                username=ssh_user,
+                password=password,
+                timeout=30,
+                look_for_keys=False,
+                allow_agent=False
+            )
+
+            prefix_path = f"/home/{target_user}/.local/lib/dispatcher-worker"
+
+            # Create PREFIX directory as target user
+            cmd = f"echo '{password}' | sudo -S su - {target_user} -c 'mkdir -p {prefix_path}'"
+            stdin, stdout, stderr = client.exec_command(cmd)
+            exit_status = stdout.channel.recv_exit_status()
+            if exit_status != 0:
+                error_output = stderr.read().decode()
+                raise Exception(f"Failed to create PREFIX directory: {error_output}")
+
+            # Create virtual environment as target user
+            cmd = f"echo '{password}' | sudo -S su - {target_user} -c 'python3 -m venv {prefix_path}/venv'"
+            stdin, stdout, stderr = client.exec_command(cmd)
+            exit_status = stdout.channel.recv_exit_status()
+            if exit_status != 0:
+                error_output = stderr.read().decode()
+                raise Exception(f"Failed to create virtual environment: {error_output}")
+
+            # Upgrade pip
+            cmd = f"echo '{password}' | sudo -S su - {target_user} -c '{prefix_path}/venv/bin/pip install --upgrade pip'"
+            stdin, stdout, stderr = client.exec_command(cmd)
+            stdout.channel.recv_exit_status()  # Don't fail on pip upgrade
+
+            # Create logs directory
+            cmd = f"echo '{password}' | sudo -S su - {target_user} -c 'mkdir -p {prefix_path}/logs/workers'"
+            stdin, stdout, stderr = client.exec_command(cmd)
+            stdout.channel.recv_exit_status()
+
+            client.close()
+            output.info(f"Remote environment setup complete on {hostname} for user {target_user}")
+            return True
+
+        except Exception as e:
+            output.error(f"Error setting up remote environment on {hostname}: {e}")
+            raise e
+
+    def _install_worker_package_sudo(self, hostname: str, ssh_user: str, password: str, target_user: str, wheel_path: str) -> bool:
+        """Install worker package for target_user using sudo from ssh_user"""
+        try:
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+            client.connect(
+                hostname=hostname,
+                username=ssh_user,
+                password=password,
+                timeout=30,
+                look_for_keys=False,
+                allow_agent=False
+            )
+
+            # Transfer wheel file to remote /tmp
+            wheel_name = Path(wheel_path).name
+            remote_wheel_path = f"/tmp/{wheel_name}"
+
+            sftp = client.open_sftp()
+            sftp.put(wheel_path, remote_wheel_path)
+            sftp.close()
+
+            # Make wheel readable by target user
+            cmd = f"echo '{password}' | sudo -S chmod 644 {remote_wheel_path}"
+            stdin, stdout, stderr = client.exec_command(cmd)
+            stdout.channel.recv_exit_status()
+
+            prefix_path = f"/home/{target_user}/.local/lib/dispatcher-worker"
+
+            # Install wheel as target user
+            cmd = f"echo '{password}' | sudo -S su - {target_user} -c '{prefix_path}/venv/bin/pip install {remote_wheel_path}'"
+            stdin, stdout, stderr = client.exec_command(cmd)
+            exit_status = stdout.channel.recv_exit_status()
+
+            if exit_status != 0:
+                error_output = stderr.read().decode()
+                raise Exception(f"Failed to install worker package: {error_output}")
+
+            # Verify installation
+            cmd = f"echo '{password}' | sudo -S su - {target_user} -c '{prefix_path}/venv/bin/python -c \"import worker_node; print(True)\"'"
+            stdin, stdout, stderr = client.exec_command(cmd)
+            exit_status = stdout.channel.recv_exit_status()
+
+            if exit_status != 0:
+                error_output = stderr.read().decode()
+                raise Exception(f"Worker package verification failed: {error_output}")
+
+            # Cleanup temp wheel file
+            client.exec_command(f"rm -f {remote_wheel_path}")
+
+            client.close()
+            output.info(f"Worker package installed successfully on {hostname} for user {target_user}")
+            return True
+
+        except Exception as e:
+            output.error(f"Error installing worker package on {hostname}: {e}")
+            raise e
+
     def _cleanup_remote_environment(self, hostname: str, ssh_user: str, private_key_path: str) -> bool:
         """Remove remote PREFIX directory and all contents"""
         try:
@@ -533,7 +699,7 @@ class Worker:
             
             # Get app name for PREFIX
             app_name = info.name  # "dispatcher"
-            prefix_path = f"$HOME/{app_name}"
+            prefix_path = f"$HOME/.local/lib/dispatcher-worker"
             
             # Remove entire PREFIX directory
             cleanup_cmd = f'rm -rf {prefix_path}'
@@ -578,7 +744,7 @@ class Worker:
             
             # Get app name for PREFIX
             app_name = info.name  # "dispatcher"
-            prefix_path = f"$HOME/{app_name}"
+            prefix_path = f"$HOME/.local/lib/dispatcher-worker"
             
             # Install wheel in venv
             install_cmd = f'{prefix_path}/venv/bin/pip install {remote_wheel_path}'
@@ -617,30 +783,47 @@ class Worker:
         ssh_target = deployment_info['ssh_target']
         ssh_user = deployment_info['ssh_user']
         password = deployment_info['password']
-        
+        create_user = deployment_info.get('create_user', False)
+
         try:
             output.info(f"Starting async remote deployment for worker {worker.name}")
             deployment_status.update_step(deployment_id, "Validating connection parameters...", 1)
-            
+
             # Build fresh worker wheel
             deployment_status.update_step(deployment_id, "Building worker package...", 2)
             wheel_path = self._build_worker_wheel()
-            
+
+            # If create_user is set, create a dedicated 'worker' user first
+            target_user = ssh_user
+            if create_user:
+                deployment_status.update_step(deployment_id, "Creating worker user...", 3)
+                target_user = self._create_user(ssh_target, ssh_user, password, ssh_key_info)
+                # Update worker record to use the new user
+                worker.ssh_user = target_user
+
             # Deploy SSH public key for future connections
-            deployment_status.update_step(deployment_id, "Testing SSH connection...", 3)
+            deployment_status.update_step(deployment_id, "Deploying SSH key...", 4 if create_user else 3)
             public_key_content = ssh_key_info["public_key"]
-            self._deploy_worker_ssh_key(ssh_target, ssh_user, password, public_key_content)
-            
+            self._deploy_worker_ssh_key(ssh_target, target_user, password, public_key_content, sudo_user=ssh_user if create_user else None)
+
             # Get private key path for subsequent operations
             private_key_path = ssh_key_info["private_key_path"]
-            
+
             # Setup remote environment
-            deployment_status.update_step(deployment_id, "Setting up remote environment...", 4)
-            self._setup_remote_environment(ssh_target, ssh_user, private_key_path)
-            
+            deployment_status.update_step(deployment_id, "Setting up remote environment...", 5 if create_user else 4)
+            if create_user:
+                # Use sudo to set up environment for worker user
+                self._setup_remote_environment_sudo(ssh_target, ssh_user, password, target_user)
+            else:
+                self._setup_remote_environment(ssh_target, target_user, private_key_path)
+
             # Install worker package
-            deployment_status.update_step(deployment_id, "Installing worker package...", 5)
-            self._install_worker_package(ssh_target, ssh_user, private_key_path, wheel_path)
+            deployment_status.update_step(deployment_id, "Installing worker package...", 6 if create_user else 5)
+            if create_user:
+                # Use sudo to install package for worker user
+                self._install_worker_package_sudo(ssh_target, ssh_user, password, target_user, wheel_path)
+            else:
+                self._install_worker_package(ssh_target, target_user, private_key_path, wheel_path)
             
             deployment_status.update_step(deployment_id, "Verifying deployment...", 6)
             deployment_status.update_step(deployment_id, "Deployment completed successfully!", 7)
@@ -682,7 +865,7 @@ class Worker:
             
             # Get app name for PREFIX
             app_name = info.name  # "dispatcher"
-            prefix_path = f"$HOME/{app_name}"
+            prefix_path = f"$HOME/.local/lib/dispatcher-worker"
             
             # Check if package is installed
             check_cmd = f'{prefix_path}/venv/bin/pip show dispatcher-worker'
@@ -721,6 +904,7 @@ class Worker:
         ssh_private_key: Optional[str] = None,
         password: Optional[str] = None,
         provision: bool = False,
+        create_user: bool = False,
         max_jobs: int = 10
     ) -> WorkerModel:
         """Create a new worker record in the database"""
@@ -752,24 +936,27 @@ class Worker:
                 log_file_path = log_dir / f"{name.lower()}.log"
                 
                 # Generate SSH keys for remote workers
+                # If create_user is true, the key should be for 'worker' user, not the provided ssh_user
                 ssh_key_info = None
+                target_ssh_user = "worker" if create_user else ssh_user
                 if worker_type == "remote" and hostname and ssh_user:
                     try:
-                        ssh_key_info = self._generate_worker_ssh_key(hostname, ssh_user)
-                        output.info(f"Generated SSH keys for remote worker {name}")
+                        ssh_key_info = self._generate_worker_ssh_key(hostname, target_ssh_user)
+                        output.info(f"Generated SSH keys for remote worker {name} (user: {target_ssh_user})")
                     except Exception as e:
                         output.error(f"Failed to generate SSH keys for remote worker {name}: {e}")
                         # For now, just log the error but continue with worker creation
                         # In the future, you might want to fail the worker creation
                 
                 # Create worker record
+                # If create_user is true, store 'worker' as the ssh_user
                 worker = WorkerModel(
                     name=name,
                     worker_type=worker_type,
                     hostname=hostname,
                     ip_address=ip_address,
                     port=port,
-                    ssh_user=ssh_user,
+                    ssh_user=target_ssh_user,
                     auth_method=auth_method,
                     ssh_private_key=ssh_private_key,
                     password=password,
@@ -811,6 +998,7 @@ class Worker:
                     'ssh_target': ssh_target,
                     'ssh_user': ssh_user,
                     'password': password,
+                    'create_user': create_user,
                     'session': session  # We'll need a new session in the thread
                 }
                 
@@ -976,16 +1164,26 @@ class Worker:
     
     def delete(self, worker_id: int) -> bool:
         """Delete worker and clean up associated SSH keys"""
+        from models import QWorker
         with self._lock:
             with db.get_session() as session:
                 worker = session.query(WorkerModel).filter_by(id=worker_id).first()
                 if not worker:
                     return False
-                
+
                 # Prevent deletion of system worker
                 if worker.name == 'System':
                     raise ValueError("Cannot delete System worker")
-                
+
+                # Check if worker is assigned to any queues
+                queue_assignments = session.query(QWorker).filter_by(worker_id=worker_id).all()
+                if queue_assignments:
+                    queue_names = []
+                    for qa in queue_assignments:
+                        if qa.queue:
+                            queue_names.append(qa.queue.name)
+                    raise ValueError(f"Worker is assigned to queues: {', '.join(queue_names)}. Remove worker from queues first.")
+
                 # Remote worker cleanup for deployed workers
                 if worker.worker_type == "remote" and worker.hostname and worker.ssh_user:
                     try:
@@ -1266,17 +1464,18 @@ class Worker:
                 redis_password = redis_password_file.read_text().strip()
 
             remote_cmd = [
-                f"cd ~/{info.name}",
+                f"cd ~/.local/lib/dispatcher-worker",
                 "&&",
                 ". venv/bin/activate",
                 "&&",
                 f"REDIS_PASSWORD='{redis_password}'",
+                "nohup",
                 "dispatcher-worker",
                 "--backend-url", backend_url,
                 "--worker-name", worker_record.name,
                 "--port", str(worker_record.port),
                 "--max-jobs", str(worker_record.max_jobs),
-                "&"
+                "> logs/workers/worker.log 2>&1 &"
             ]
             
             ssh_command = " ".join(remote_cmd)

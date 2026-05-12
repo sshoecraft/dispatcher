@@ -16,6 +16,7 @@ interface Worker {
   ssh_private_key?: string
   password?: string
   provision?: boolean
+  create_user?: boolean
   max_jobs?: number
   current_jobs?: number  // Current running jobs count from backend
   status?: string
@@ -58,10 +59,11 @@ const Workers: React.FC = () => {
     hostname: '',
     ip_address: '',
     ssh_user: '',
-    auth_method: 'key',
+    auth_method: 'password',
     ssh_private_key: '',
     password: '',
     provision: true,
+    create_user: false,
     max_jobs: 10
   })
   const [eventSource, setEventSource] = useState<EventSource | null>(null)
@@ -518,6 +520,7 @@ const Workers: React.FC = () => {
           ssh_private_key: newWorker.ssh_private_key || null,
           password: newWorker.password || null,
           provision: newWorker.provision,
+          create_user: newWorker.create_user,
           max_jobs: newWorker.max_jobs
         }),
       })
@@ -550,10 +553,11 @@ const Workers: React.FC = () => {
         hostname: '',
         ip_address: '',
         ssh_user: '',
-        auth_method: 'key',
+        auth_method: 'password',
         ssh_private_key: '',
         password: '',
         provision: true,
+        create_user: false,
         max_jobs: 10
       })
       await fetchWorkers()
@@ -1105,19 +1109,34 @@ const Workers: React.FC = () => {
 
               {/* Provision Option - only for remote workers */}
               {newWorker.worker_type === 'remote' && (
-                <div className="form-control">
-                  <label className="label cursor-pointer">
-                    <span className="label-text">Provision worker</span>
-                    <input
-                      type="checkbox"
-                      className="checkbox checkbox-primary"
-                      checked={newWorker.provision}
-                      onChange={(e) => setNewWorker({ ...newWorker, provision: e.target.checked })}
-                    />
-                  </label>
-                </div>
+                <>
+                  <div className="form-control">
+                    <label className="label cursor-pointer">
+                      <span className="label-text">Provision worker</span>
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-primary"
+                        checked={newWorker.provision}
+                        onChange={(e) => setNewWorker({ ...newWorker, provision: e.target.checked })}
+                      />
+                    </label>
+                  </div>
+                  {newWorker.provision && (
+                    <div className="form-control">
+                      <label className="label cursor-pointer">
+                        <span className="label-text">Create worker user (requires sudo)</span>
+                        <input
+                          type="checkbox"
+                          className="checkbox checkbox-primary"
+                          checked={newWorker.create_user}
+                          onChange={(e) => setNewWorker({ ...newWorker, create_user: e.target.checked })}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </>
               )}
-              
+
               <div className="modal-action">
                 <button 
                   type="button" 

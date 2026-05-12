@@ -266,19 +266,7 @@ NODE_VERSION=$(node -v | cut -d'v' -f2)
 print_status "Node.js v$NODE_VERSION found"
 print_status "All prerequisites satisfied"
 
-# Check if system Redis is running ($BRAND_APP_NAME runs its own Redis instance)
-if systemctl is-active --quiet redis-server 2>/dev/null || systemctl is-active --quiet redis 2>/dev/null; then
-    print_error "System Redis server is running!"
-    echo
-    echo "$BRAND_APP_NAME runs its own Redis instance and will conflict with the system service."
-    echo "Please stop and disable the system Redis server before continuing:"
-    echo
-    echo "  sudo systemctl stop redis-server"
-    echo "  sudo systemctl disable redis-server"
-    echo
-    exit 1
-fi
-print_status "System Redis not running (OK)"
+# Note: We use Redis on port 6378 to avoid conflicts with system Redis (6379)
 
 # Detect portd. In portd mode, skip artifacts that direct mode needs but
 # portd does not: .ports (portd allocates dynamically) and self-signed SSL

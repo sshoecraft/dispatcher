@@ -105,12 +105,12 @@ class Logger:
             network_ip = info.get_local_ip()
             test_client = redis.Redis(
                 host=network_ip,
-                port=6379,
+                port=6378,
                 password=redis_password,
                 socket_connect_timeout=2
             )
             test_client.ping()
-            output.info(f"Redis already running on network interface {network_ip}:6379")
+            output.info(f"Redis already running on network interface {network_ip}:6378")
             return
         except:
             # Redis not running on network interface, start it
@@ -128,7 +128,7 @@ class Logger:
             redis_cmd = [
                 'redis-server',
                 '--bind', '0.0.0.0',
-                '--port', '6379',
+                '--port', '6378',
                 '--daemonize', 'yes',
                 '--protected-mode', 'yes',  # Enable protected mode
                 '--logfile', redis_log,
@@ -141,7 +141,7 @@ class Logger:
                 redis_cmd.extend(['--requirepass', redis_password])
 
             result = subprocess.run(redis_cmd, capture_output=True, text=True, check=True)
-            output.info(f"Started Redis server on 0.0.0.0:6379 (log: {redis_log})")
+            output.info(f"Started Redis server on 0.0.0.0:6378 (log: {redis_log})")
 
             # Wait a moment for Redis to start
             time.sleep(2)
@@ -150,12 +150,12 @@ class Logger:
             network_ip = info.get_local_ip()
             test_client = redis.Redis(
                 host=network_ip,
-                port=6379,
+                port=6378,
                 password=redis_password,
                 socket_connect_timeout=5
             )
             test_client.ping()
-            output.info(f"Verified Redis connection on {network_ip}:6379")
+            output.info(f"Verified Redis connection on {network_ip}:6378")
 
         except subprocess.CalledProcessError as e:
             output.error(f"Failed to start Redis server: {e.stderr}")
@@ -612,7 +612,7 @@ class Logger:
 
             self._redis_client = redis.Redis(
                 host=redis_host,
-                port=6379,
+                port=6378,
                 db=0,
                 password=redis_password,
                 decode_responses=False,
@@ -622,11 +622,11 @@ class Logger:
 
             # Test connection
             self._redis_client.ping()
-            output.info(f"Redis connection established for logger at {redis_host}:6379")
+            output.info(f"Redis connection established for logger at {redis_host}:6378")
             return True
 
         except Exception as e:
-            output.error(f"Failed to connect to Redis at {redis_host}:6379: {e}")
+            output.error(f"Failed to connect to Redis at {redis_host}:6378: {e}")
             return False
     
     def _consume_redis_logs(self):
@@ -644,7 +644,7 @@ class Logger:
             output.error("Failed to connect to Redis for log consumption")
             return
         
-        output.info(f"Connected to Redis at {info.get_local_ip()}:6379")
+        output.info(f"Connected to Redis at {info.get_local_ip()}:6378")
         
         consecutive_errors = 0
         max_consecutive_errors = 10

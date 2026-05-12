@@ -35,7 +35,7 @@ class RedisLogger:
         
         # Use environment variables or defaults
         self.redis_host = os.getenv('REDIS_HOST', host_part)
-        self.redis_port = int(os.getenv('REDIS_PORT', 6379))
+        self.redis_port = int(os.getenv('REDIS_PORT', 6378))
         self.redis_db = int(os.getenv('REDIS_DB', 0))
         self.redis_password = os.getenv('REDIS_PASSWORD', None)
 

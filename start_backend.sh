@@ -55,6 +55,11 @@ else
     fi
 fi
 
+# Make the chosen port visible to the backend process so info.port
+# (which reads $FASTAPI) matches the actual listener. Workers use
+# info.port to build their --backend-url callback target.
+export FASTAPI="$BACKEND_PORT"
+
 # Refuse to start if backend is already running
 if [ -f "$PID_FILE" ]; then
     EXISTING_PID=$(cat "$PID_FILE" 2>/dev/null)

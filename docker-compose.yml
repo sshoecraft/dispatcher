@@ -1,0 +1,30 @@
+services:
+  dispatcher:
+    build: .
+    container_name: dispatcher
+    network_mode: host
+    environment:
+      - BACKEND_PORT=8000
+      - NGINX_PORT=8080
+      # - API_URL=https://your-domain.com  # Override for external access
+      # Database config (defaults to SQLite)
+      - DB_TYPE=sqlite
+      # For PostgreSQL:
+      # - DB_TYPE=postgresql
+      # - PG_HOST=postgres
+      # - PG_PORT=5432
+      # - PG_DB=dispatcher
+      # - PG_USER=dispatcher
+      # - PG_PWD=changeme
+    volumes:
+      - dispatcher:/opt/dispatcher
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  dispatcher:

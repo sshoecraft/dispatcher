@@ -1727,6 +1727,7 @@ async def stream_queue_logs(queue_id: int):
 async def create_worker(request: WorkerCreateRequest):
     """Create a new worker."""
     try:
+        output.info(f"Creating worker: provision={request.provision}, create_user={request.create_user}")
         created_result = worker.create(
             name=request.name,
             worker_type=request.worker_type,
@@ -1737,6 +1738,7 @@ async def create_worker(request: WorkerCreateRequest):
             ssh_private_key=request.ssh_private_key,
             password=request.password,
             provision=request.provision,
+            create_user=request.create_user,
             max_jobs=request.max_jobs
         )
         
@@ -2370,6 +2372,11 @@ if __name__ == "__main__":
 		port = int(sys.argv[1])
 	else:
 		port = info.port
+
+	# Make info.port reflect the actual listener so callers that build
+	# callback URLs from it (e.g. worker.py's --backend-url) stay correct
+	# even when the port came from argv rather than $FASTAPI.
+	info.port = port
 
 	# When fronted by a path-routing reverse proxy (e.g. portd at /<slug>),
 	# UVICORN_ROOT_PATH=/<slug> makes FastAPI generate URLs that include the
