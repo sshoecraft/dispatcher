@@ -4,6 +4,12 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Auto-detect system install if /opt/dispatcher exists
+if [ -z "${PREFIX}" ] && [ -d "/opt/dispatcher" ]; then
+    export PREFIX="/opt/dispatcher"
+fi
+
 source "$SCRIPT_DIR/branding.sh"
 
 echo "Starting $BRAND_APP_NAME at $(date)"

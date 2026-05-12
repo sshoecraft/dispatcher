@@ -1,0 +1,25 @@
+# Node modules - npm ci installs fresh in container
+frontend/node_modules
+
+# Git
+.git
+.gitignore
+
+# Build artifacts
+frontend/dist
+worker/dist
+worker/build
+worker/*.egg-info
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+
+# Logs and temp files
+*.log
+tmp/
+
+# IDE
+.vscode
+.idea

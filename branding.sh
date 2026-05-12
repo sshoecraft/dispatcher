@@ -28,9 +28,13 @@ export BRAND_SLUG=$(_brand_get slug dispatcher)
 export BRAND_APP_NAME=$(_brand_get appName Dispatcher)
 export BRAND_APP_SHORT_NAME=$(_brand_get appShortName "$BRAND_APP_NAME")
 
-# PREFIX defaults to ~/.${slug} but respects an explicit override.
+# PREFIX defaults to /opt/dispatcher for root, ~/.dispatcher otherwise.
 if [ -z "${PREFIX}" ]; then
-    export PREFIX="$HOME/.$BRAND_SLUG"
+    if [ "$(id -u)" -eq 0 ]; then
+        export PREFIX="/opt/dispatcher"
+    else
+        export PREFIX="$HOME/.dispatcher"
+    fi
 fi
 
 unset _BRAND_DIR _BRAND_FILE

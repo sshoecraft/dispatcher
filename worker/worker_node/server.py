@@ -104,11 +104,13 @@ class WorkerNode:
             for arg_b64 in request.args:
                 args.append(base64.b64decode(arg_b64).decode('utf-8'))
             
-            # Build command line as list to avoid shell interpretation corrupting JSON
-            # Use shlex.split to properly handle quoted arguments (e.g., bash -c "...")
+            # Always use bash -c to support shell features (source, &&, pipes, etc.)
+            # Append args inside the command string so they're part of the shell command
             import shlex
-            command_parts = shlex.split(command)
-            cmd_list = command_parts + args
+            full_command = command
+            for arg in args:
+                full_command += ' ' + shlex.quote(arg)
+            cmd_list = ['bash', '-c', full_command]
             
             # Log the execution start
             output.info(f"Executing job {execution_id}: {' '.join(cmd_list)}")

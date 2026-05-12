@@ -49,19 +49,12 @@ fi
 # Ensure directories exist
 mkdir -p "$PREFIX/etc" "$PREFIX/logs" "$PREFIX/data" "$PREFIX/lib" "$PREFIX/logs/jobs" "$APP_DIR/tmp"
 
-# Use existing Redis password or generate one
-if [ -f "$PREFIX/etc/.redis_password" ]; then
-    REDIS_PASSWORD=$(cat "$PREFIX/etc/.redis_password")
-else
+# Generate Redis password if it doesn't exist (backend will start Redis)
+if [ ! -f "$PREFIX/etc/.redis_password" ]; then
     REDIS_PASSWORD=$(openssl rand -base64 32)
     echo "$REDIS_PASSWORD" > "$PREFIX/etc/.redis_password"
     chmod 600 "$PREFIX/etc/.redis_password"
 fi
-
-# Start Redis on port 6378 (avoids conflict with system Redis on 6379)
-echo "Starting Redis on port 6378..."
-redis-server --daemonize yes --port 6378 --bind 0.0.0.0 --requirepass "$REDIS_PASSWORD" --dir "$PREFIX/data"
-sleep 1
 
 # Generate nginx config
 cat > "$PREFIX/etc/nginx.conf" << EOF
