@@ -899,8 +899,18 @@ class Queue:
                     command = template_pattern.sub(replace_template, command)
                     output.debug(f"Substituted command for job {job_id}: {command}")
                 elif job_args:
-                    # No template - pass args as JSON for backwards compatibility
-                    args.append(json.dumps(job_args))
+                    if isinstance(job_args, dict) and 'args' in job_args and isinstance(job_args['args'], list):
+                        # Plain text mode: {"args": ["arg1", "arg2"]} → individual args
+                        for arg in job_args['args']:
+                            args.append(str(arg))
+                    elif isinstance(job_args, dict):
+                        # JSON mode: pass entire dict as a single JSON string argument
+                        args.append(json.dumps(job_args))
+                    elif isinstance(job_args, list):
+                        for arg in job_args:
+                            args.append(str(arg))
+                    else:
+                        args.append(str(job_args))
                 
                 # Dispatch to worker using async/await in thread
                 loop = asyncio.new_event_loop()
@@ -909,20 +919,19 @@ class Queue:
                     # Import worker here to avoid circular imports
                     from worker import worker
                     
-                    success = loop.run_until_complete(
+                    success, error_detail = loop.run_until_complete(
                         worker.execute_command(selected_worker.id, execution_id, command, args)
                     )
-                    
+
                     if success:
                         # Update job with assigned worker name in database
                         job.assigned_worker_name = selected_worker.name
                         job.worker_name = selected_worker.name  # Also set worker_name for UI display
                         session.commit()
-                        
+
                         return True, f"worker {selected_worker.name}"
                     else:
-                        # Get more detailed error information if available
-                        detailed_reason = f"Worker {selected_worker.name} rejected job (communication successful but execution failed)"
+                        detailed_reason = f"Worker {selected_worker.name} rejected job: {error_detail}"
                         return False, detailed_reason
                         
                 finally:

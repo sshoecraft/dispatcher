@@ -26,6 +26,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 source "$SCRIPT_DIR/branding.sh"
 
 frontend_dir=frontend
@@ -59,7 +60,7 @@ if [ "$USE_PORTD" != "true" ]; then
         echo ""
         echo "Either start portd on :2019, or run setup.sh to initialize"
         echo "direct mode:"
-        echo "  ./setup.sh"
+        echo "  ./scripts/setup.sh"
         exit 1
     fi
     source "$PORTS_FILE"
@@ -69,7 +70,7 @@ fi
 # Always need PREFIX dirs that hold runtime state, regardless of mode.
 mkdir -p "$PREFIX/etc" "$PREFIX/logs" "$PREFIX/tmp" "$PREFIX/www"
 
-cd "$SCRIPT_DIR/${frontend_dir}"
+cd "$REPO_ROOT/${frontend_dir}"
 echo "📁 Frontend directory: $(pwd)"
 
 if [ ! -f "package.json" ]; then

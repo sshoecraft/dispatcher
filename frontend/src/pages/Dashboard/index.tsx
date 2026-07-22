@@ -257,7 +257,7 @@ const Dashboard = () => {
                 </Pie>
                 <Tooltip />
                 <Legend 
-                  formatter={(value, entry) => `${value}: ${entry?.payload?.value || 0}`}
+                  formatter={(value, entry) => `${value}: ${(entry?.payload as { value?: number } | undefined)?.value || 0}`}
                   verticalAlign="bottom"
                   height={36}
                 />

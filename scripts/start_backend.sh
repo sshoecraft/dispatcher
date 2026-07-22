@@ -3,6 +3,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 source "$SCRIPT_DIR/branding.sh"
 backend_dir=backend
 
@@ -70,7 +71,7 @@ if [ -f "$PID_FILE" ]; then
     rm -f "$PID_FILE"
 fi
 
-cd "$SCRIPT_DIR/${backend_dir}" || exit 1
+cd "$REPO_ROOT/${backend_dir}" || exit 1
 
 # Set environment variables (similar to Docker ENV)
 export PYTHONUNBUFFERED=1

@@ -114,16 +114,27 @@ class WorkerNode:
             
             # Log the execution start
             output.info(f"Executing job {execution_id}: {' '.join(cmd_list)}")
-            
+
+            # Build a clean environment without the dispatcher venv
+            # so job commands use the system Python and PATH
+            job_env = os.environ.copy()
+            virtual_env = job_env.pop('VIRTUAL_ENV', None)
+            if virtual_env:
+                # Remove venv bin dir from PATH
+                path_dirs = job_env.get('PATH', '').split(os.pathsep)
+                path_dirs = [d for d in path_dirs if not d.startswith(virtual_env)]
+                job_env['PATH'] = os.pathsep.join(path_dirs)
+
             # Use pty to force unbuffered output (pseudo-terminal tricks programs into thinking they're interactive)
             master_fd, slave_fd = pty.openpty()
-            
+
             process = subprocess.Popen(
                 cmd_list,
                 shell=False,
                 stdout=slave_fd,
                 stderr=slave_fd,
                 stdin=subprocess.DEVNULL,
+                env=job_env,
                 preexec_fn=os.setsid  # Create new session to avoid terminal interference
             )
             

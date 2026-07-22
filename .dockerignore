@@ -23,3 +23,9 @@ tmp/
 # IDE
 .vscode
 .idea
+
+# Local dev config override: a gitignored symlink to a host-absolute path
+# (/home/<user>/.dispatcher/etc/config.json). It dangles inside the build
+# context and breaks vite's public/ dir copy. The container generates its own
+# config.json at build time and gets API_URL injected by the entrypoint.
+frontend/public/config.local.json

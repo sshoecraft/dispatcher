@@ -122,13 +122,14 @@ const Specs: React.FC = () => {
     if (!runningJob) return
     
     try {
-      let args = {}
+      let args: Record<string, any> = {}
       if (runArgs.trim()) {
         try {
+          // Try JSON first for structured arguments
           args = JSON.parse(runArgs)
         } catch {
-          toast.error('Invalid JSON format for arguments')
-          return
+          // Not JSON - treat as space-separated command-line arguments
+          args = { args: runArgs.trim().split(/\s+/) }
         }
       }
       
@@ -538,7 +539,7 @@ const Specs: React.FC = () => {
               </label>
               <textarea 
                 className="textarea textarea-bordered w-full font-mono"
-                placeholder='{"arg1": "value1", "database": "production"}'
+                placeholder='vsphere/esx/debian-12.12-x86_64 test6'
                 rows={4}
                 value={runArgs}
                 onChange={(e) => setRunArgs(e.target.value)}

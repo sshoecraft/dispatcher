@@ -35,7 +35,7 @@ class Info:
 		self.name = self.branding["slug"]
 		self.app_name = self.branding["appName"]
 		self.desc = self.branding.get("appShortName", self.app_name)
-		self.version = "1.1"
+		self.version = "1.1.1"
 		self.prefix = None
 		self.http_port = int(os.getenv('NGINX_HTTP', '80'))
 		self.https_port = int(os.getenv('NGINX_HTTPS', '443'))

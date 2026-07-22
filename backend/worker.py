@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from info import info
 from output import output
 from db import db
-from models import Worker as WorkerModel
+from models import Worker as WorkerModel, QWorker
 
 class DeploymentStatus:
     """Track deployment progress for workers"""
@@ -1235,6 +1235,7 @@ class Worker:
                         output.error(f"Failed to cleanup worker {worker.name}: {e}")
                         # Continue with worker deletion even if cleanup fails
                 
+                session.query(QWorker).filter_by(worker_id=worker_id).delete()
                 session.delete(worker)
                 session.commit()
                 
@@ -1730,56 +1731,56 @@ class Worker:
         host = "localhost" if worker_record.worker_type == "local" else worker_record.ip_address
         return f"http://{host}:{worker_record.port}"
 
-    async def execute_command(self, worker_id: int, execution_id: str, command: str, args: List[str] = None) -> bool:
-        """Execute command on worker node via HTTP REST"""
+    async def execute_command(self, worker_id: int, execution_id: str, command: str, args: List[str] = None) -> tuple:
+        """Execute command on worker node via HTTP REST. Returns (success, error_detail)."""
         try:
             endpoint = self.get_worker_endpoint(worker_id)
-            
+
             # Base64 encode the command for safe transmission
             command_b64 = base64.b64encode(command.encode('utf-8')).decode('utf-8')
-            
+
             # Base64 encode each argument
             args_b64 = []
             if args:
                 for arg in args:
                     args_b64.append(base64.b64encode(str(arg).encode('utf-8')).decode('utf-8'))
-            
+
             payload = {
                 "execution_id": execution_id,
                 "command": command_b64,
                 "args": args_b64
             }
-            
+
             output.info(f"DEBUG: Sending to {endpoint}/execute: {payload}")
-            
+
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     f"{endpoint}/execute",
                     json=payload
                 )
                 response.raise_for_status()
-                
+
                 result = response.json()
                 output.info(f"Command executed on worker {worker_id}, execution_id {execution_id}, PID: {result.get('pid')}")
-                return True
-                
+                return True, None
+
         except Exception as e:
             detailed_error = f"Failed to execute command on worker {worker_id}: {e}"
-            
+            worker_detail = None
+
             # Try to get response body for more detailed error information
             if hasattr(e, 'response') and e.response is not None:
                 try:
                     error_body = e.response.text
+                    worker_detail = error_body
                     detailed_error += f" | Worker response: {error_body}"
                     output.error(f"Worker response body: {error_body}")
                 except:
                     pass
-            
+
             output.error(detailed_error)
-            
-            # Store detailed error for dispatch process to use
-            # This could be improved by returning error details, but for now log them
-            return False
+
+            return False, worker_detail or str(e)
 
     async def get_command_status(self, worker_id: int, execution_id: str) -> Optional[Dict[str, Any]]:
         """Get command status from worker node"""

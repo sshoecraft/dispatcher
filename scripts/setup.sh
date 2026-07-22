@@ -3,11 +3,12 @@
 # Setup Script
 # This script installs all necessary dependencies and configures the system.
 # Branding (app name, prefix slug, etc.) comes from branding.json.
-# Usage: PREFIX=/path/to/install ./setup.sh [--uninstall]
+# Usage: PREFIX=/path/to/install ./scripts/setup.sh [--uninstall]
 
 set -e  # Exit on any error
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 source "$SCRIPT_DIR/branding.sh"
 
 UNINSTALL=false
@@ -68,7 +69,7 @@ print_warning() {
     echo -e "${YELLOW}[*]${NC} $1"
 }
 
-cd "$SCRIPT_DIR"
+cd "$REPO_ROOT"
 
 # Uninstall function
 uninstall_dispatcher() {
@@ -76,8 +77,8 @@ uninstall_dispatcher() {
 
     # Stop any running processes
     print_status "Stopping any running $BRAND_APP_NAME processes..."
-    ./stop_backend.sh 2>/dev/null || true
-    ./stop_frontend.sh 2>/dev/null || true
+    "$SCRIPT_DIR/stop_backend.sh" 2>/dev/null || true
+    "$SCRIPT_DIR/stop_frontend.sh" 2>/dev/null || true
     
     # Remove PREFIX directory
     if [[ -d "$PREFIX" ]]; then
@@ -304,10 +305,19 @@ print_status "Installing Python dependencies..."
 "$PREFIX/venv/bin/pip" install --upgrade pip
 "$PREFIX/venv/bin/pip" install -r backend/requirements.txt
 
-# Build and install worker package
+# Build and install worker package.
+# Build in a local tmp dir so that NFS-hosted source trees don't produce
+# AppleDouble (._*) sidecar files inside the wheel zip — macOS creates those
+# whenever it writes xattrs to NFS, and they corrupt the wheel layout.
 print_status "Building worker wheel..."
 mkdir -p worker/dist
-"$PREFIX/venv/bin/pip" wheel worker/ -w worker/dist/ --no-deps
+WORKER_BUILD_TMP=$(mktemp -d -t dispatcher-worker-build)
+trap 'rm -rf "$WORKER_BUILD_TMP"' EXIT
+cp -R worker/ "$WORKER_BUILD_TMP/worker/"
+find "$WORKER_BUILD_TMP" -name '._*' -delete
+xattr -cr "$WORKER_BUILD_TMP" 2>/dev/null || true
+"$PREFIX/venv/bin/pip" wheel "$WORKER_BUILD_TMP/worker" -w "$WORKER_BUILD_TMP/dist" --no-deps
+cp "$WORKER_BUILD_TMP/dist"/*.whl worker/dist/
 WORKER_WHEEL=$(ls -t worker/dist/*.whl | head -1)
 print_status "Installing worker package from $WORKER_WHEEL..."
 "$PREFIX/venv/bin/pip" install "$WORKER_WHEEL"
@@ -360,7 +370,7 @@ cd ..
 # Initialize port configuration (direct mode only — portd allocates dynamically)
 if [[ "$USE_PORTD" != "true" ]]; then
     print_status "Initializing port configuration..."
-    PREFIX="$PREFIX" ./port_manager.sh initialize
+    PREFIX="$PREFIX" "$SCRIPT_DIR/port_manager.sh" initialize
 
     if [[ ! -f "$PREFIX/etc/.ports" ]]; then
         print_error "Failed to generate port configuration"
@@ -410,15 +420,15 @@ if [[ "$USE_PORTD" != "true" ]]; then
     echo "  - $PREFIX/etc/.ports         # Port configuration"
 fi
 echo "  - $PREFIX/etc/database.json  # Database settings"
-echo "  - $SCRIPT_DIR/branding.json  # Branding (single source of truth)"
+echo "  - $REPO_ROOT/branding.json  # Branding (single source of truth)"
 if [[ "$USE_PORTD" == "true" ]]; then
     echo
     echo "portd mode: ports allocated dynamically; TLS terminated by portd"
 fi
 echo
 print_warning "Next steps:"
-echo "1. Start backend:    PREFIX=$PREFIX ./start_backend.sh"
-echo "2. Start frontend:   PREFIX=$PREFIX ./start_frontend.sh"
+echo "1. Start backend:    PREFIX=$PREFIX ./scripts/start_backend.sh"
+echo "2. Start frontend:   PREFIX=$PREFIX ./scripts/start_frontend.sh"
 echo "3. Access web UI:    Check frontend startup output for URL"
 echo
 echo "To uninstall: PREFIX=$PREFIX $0 --uninstall"

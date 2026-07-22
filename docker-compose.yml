@@ -1,8 +1,15 @@
 services:
   dispatcher:
-    build: .
+    build:
+      context: .
+      # Build with host networking: the default docker bridge intermittently
+      # times out reaching deb.debian.org (Fastly CDN), which breaks apt-get.
+      network: host
     container_name: dispatcher
     network_mode: host
+    # Run as the calling user's uid:gid (exported by scripts/dstart.sh) so files
+    # written into the ~/.dispatcher bind mount are owned by you, not root.
+    user: "${DISPATCHER_UID:-1000}:${DISPATCHER_GID:-1000}"
     environment:
       - BACKEND_PORT=8000
       - NGINX_PORT=8080
@@ -17,7 +24,7 @@ services:
       # - PG_USER=dispatcher
       # - PG_PWD=changeme
     volumes:
-      - dispatcher:/opt/dispatcher
+      - ${HOME}/.dispatcher:/opt/dispatcher
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/info"]
@@ -25,6 +32,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-
-volumes:
-  dispatcher:

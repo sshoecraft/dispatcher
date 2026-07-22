@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Source this file from any shell script to get branding env vars exported.
-# Single source of truth: branding.json in this same directory. Forks override
+# Single source of truth: branding.json at the repo root. Forks override
 # branding.json — they do not edit shell scripts or source code.
 #
 # After sourcing, the following are exported (with sensible fallbacks):
@@ -10,7 +10,7 @@
 #   BRAND_APP_SHORT_NAME  - short display name
 #   PREFIX                - install prefix (defaults to $HOME/.${BRAND_SLUG})
 
-_BRAND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_BRAND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 _BRAND_FILE="$_BRAND_DIR/branding.json"
 
 if [ ! -f "$_BRAND_FILE" ]; then

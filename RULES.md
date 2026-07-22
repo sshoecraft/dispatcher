@@ -1,8 +1,10 @@
 **MANDATORY SERVER COMMANDS (NEVER DEVIATE):**
-- To start the Frontend: `cd <cwd> && ./start_frontend.sh > ~/dispatcher/logs/frontend.log 2>&1 &`
-- To stop the Frontend: `cd <cwd> && ./stop_frontend.sh` then MAKE SURE all processes have exited (including workers)
-- To start the Backend: `cd <cwd> && ./start_backend.sh > ~/dispatcher/logs/backend.log 2>&1 &`
-- To stop the Backend: `cd <cwd> && ./stop_backend.sh`
+- To start the Frontend: `cd <cwd> && ./scripts/start_frontend.sh > ~/.dispatcher/logs/frontend.log 2>&1 &`
+- To stop the Frontend: `cd <cwd> && ./scripts/stop_frontend.sh` then MAKE SURE all processes have exited (including workers)
+- To start the Backend: `cd <cwd> && ./scripts/start_backend.sh > ~/.dispatcher/logs/backend.log 2>&1 &`
+- To stop the Backend: `cd <cwd> && ./scripts/stop_backend.sh`
+- To start the Docker container: `cd <cwd> && ./scripts/dstart.sh`
+- To stop the Docker container: `cd <cwd> && ./scripts/dstop.sh`
 - After starting either frontend or backend, check to see if they are running: `lsof -Pi | grep LISTEN`
 - **POLL FOR SERVER READINESS**: Use `tail -n 10 <logfile>` repeatedly with `sleep 5` between checks until log shows startup completion message
 - **ONLY AFTER** log confirms server is ready, verify port is listening: `lsof -Pi | grep LISTEN`
@@ -16,13 +18,13 @@
 **RESTART WORKFLOW - YOU MUST FOLLOW THIS EXACTLY:**
 After ANY code change:
 1. BACKEND CHANGES (*.py files in backend/): 
-   - STOP: `./stop_backend.sh`
-   - START: `./start_backend.sh > ~/dispatcher/logs/backend.log 2>&1 &`
-   - WAIT: Check logs with `tail -n 10 ~/dispatcher/logs/backend.log` until "Application startup complete"
+   - STOP: `./scripts/stop_backend.sh`
+   - START: `./scripts/start_backend.sh > ~/.dispatcher/logs/backend.log 2>&1 &`
+   - WAIT: Check logs with `tail -n 10 ~/.dispatcher/logs/backend.log` until "Application startup complete"
    
 2. FRONTEND CHANGES (*.tsx, *.ts, *.css in frontend/):
-   - STOP: `./stop_frontend.sh`  
-   - START: `./start_frontend.sh > ~/dispatcher/logs/frontend.log 2>&1 &`
+   - STOP: `./scripts/stop_frontend.sh`  
+   - START: `./scripts/start_frontend.sh > ~/.dispatcher/logs/frontend.log 2>&1 &`
    - WAIT: Check logs until "Nginx server is ready and running!"
 
 **WHEN TO RESTART:**

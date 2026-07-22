@@ -49,16 +49,19 @@ def get_backend_port():
     # Default fallback
     return 8000
 
-def run_job(job_name, args_json=None, created_by=None, queue=None, api_url=None):
+def run_job(job_name, runtime_args_list=None, created_by=None, queue=None, api_url=None):
     """
-    Run a job definition by name
+    Run a job definition by name.
+    
+    All positional arguments after the job name are collected into `runtime_args_list`
+    and sent to the backend as the `runtime_args` field.
     
     Args:
-        job_name: Name of the job definition to run
-        args_json: Optional JSON string of arguments to pass to the job
-        created_by: Optional user ID who created the job (defaults to "system")
-        queue: Optional target queue name
-        api_url: API base URL (auto-detected from .ports if not provided)
+        job_name: Name of the job definition to run.
+        runtime_args_list: List of positional arguments to pass as runtime arguments.
+        created_by: Optional user ID who created the job (defaults to "system").
+        queue: Optional target queue name.
+        api_url: API base URL (auto-detected from .ports if not provided).
     """
     
     # Auto-detect API URL if not provided
@@ -71,12 +74,11 @@ def run_job(job_name, args_json=None, created_by=None, queue=None, api_url=None)
         "spec_name": job_name
     }
     
-    if args_json:
-        try:
-            payload["runtime_args"] = json.loads(args_json)
-        except json.JSONDecodeError as e:
-            print(f"Error: Invalid JSON in arguments: {e}", file=sys.stderr)
-            return False
+    # Process additional positional arguments (runtime_args_list)
+    if runtime_args_list:
+        # All positional arguments after the job name are sent under the 'runtime_args' key
+        # as a dictionary with a single entry 'args' that holds the list of arguments.
+        payload["runtime_args"] = {"args": runtime_args_list}
     
     if created_by:
         payload["created_by"] = created_by
@@ -147,9 +149,9 @@ Examples:
     )
     
     parser.add_argument(
-        "args",
-        nargs='?',
-        help="JSON string of arguments to pass to the job (e.g., '{\"key\": \"value\"}')"
+        "runtime_args",
+        nargs='*',
+        help="All positional arguments after the job name will be sent as runtime arguments (optional)"
     )
     
     parser.add_argument(
@@ -171,7 +173,7 @@ Examples:
     
     success = run_job(
         job_name=args.job_name,
-        args_json=args.args,
+        runtime_args_list=args.runtime_args,
         created_by=args.created_by,
         queue=args.queue,
         api_url=args.api_url

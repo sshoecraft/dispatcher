@@ -51,11 +51,26 @@ COPY branding.json ./etc/
 COPY branding.json ./
 
 # Copy entrypoint
-COPY docker-entrypoint.sh ./
+COPY scripts/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 ENV PREFIX=/opt/dispatcher
 ENV PYTHONUNBUFFERED=1
+
+# Allow running the container as an arbitrary (non-root) host uid:gid so files
+# written into the /opt/dispatcher bind mount are owned by the calling user, not
+# root. Give npm a writable cache/home, drop the stale build-stage tsc cache, and
+# make the dirs written at runtime (nginx pid + pycache in /app/tmp, and the
+# portd-mode SPA rebuild in /app/www) writable by any uid.
+ENV HOME=/tmp \
+    npm_config_cache=/tmp/.npm
+RUN mkdir -p /app/tmp /app/www /var/lib/nginx /var/log/nginx \
+    && rm -rf /app/frontend-src/node_modules/.tmp \
+              /app/frontend-src/node_modules/.vite \
+              /app/frontend-src/node_modules/.vite-temp \
+              /app/frontend-src/node_modules/.cache \
+    && chmod -R 0777 /app/tmp /app/www /var/lib/nginx /var/log/nginx \
+    && chmod 0777 /app/frontend-src/node_modules
 
 EXPOSE 8080
 
