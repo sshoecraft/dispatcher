@@ -16,6 +16,26 @@ function brandingPlugin(): Plugin {
     configResolved(config) {
       outDir = config.build.outDir
     },
+    // Rewrite the static <title> in index.html from branding.json (single
+    // source of truth) at both dev-serve and build time, so a rebranded fork
+    // gets the correct title in the initial HTML — no "Dispatcher" flash
+    // before main.tsx sets document.title from the loaded config at runtime.
+    transformIndexHtml(html) {
+      try {
+        const brand = JSON.parse(fs.readFileSync(BRANDING_FILE, 'utf-8'))
+        const title = brand.htmlTitle || brand.appName || brand.appShortName
+        if (title) {
+          const escaped = String(title)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+          return html.replace(/<title>[\s\S]*?<\/title>/, `<title>${escaped}</title>`)
+        }
+      } catch {
+        // Leave the static title untouched if branding.json can't be read.
+      }
+      return html
+    },
     configureServer(server) {
       server.middlewares.use('/config.json', (req, res, next) => {
         if (req.method !== 'GET') return next()
