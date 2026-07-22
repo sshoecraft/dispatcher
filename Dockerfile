@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     redis-server \
     curl \
     lsof \
+    procps \
     gcc \
     libpq-dev \
     openssl \

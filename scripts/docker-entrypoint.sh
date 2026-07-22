@@ -148,4 +148,7 @@ nginx -c "$PREFIX/etc/nginx.conf"
 echo "Starting backend on port $BACKEND_PORT..."
 cd "$APP_DIR/backend"
 export PYTHONPYCACHEPREFIX="$APP_DIR/tmp/__pycache__"
+# Record the chosen port so the container healthcheck can find the backend
+# (the port is dynamic when allocated by portd).
+echo "$BACKEND_PORT" > "$APP_DIR/tmp/backend.port"
 exec python3 main.py "$BACKEND_PORT"

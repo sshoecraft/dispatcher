@@ -27,8 +27,10 @@ services:
       - ${HOME}/.dispatcher:/opt/dispatcher
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/info"]
+      # Backend port is dynamic in portd mode; read it from the file the
+      # entrypoint writes and hit a real endpoint.
+      test: ["CMD-SHELL", "P=$$(cat /app/tmp/backend.port 2>/dev/null); [ -n \"$$P\" ] && curl -fsS http://127.0.0.1:$$P/openapi.json >/dev/null 2>&1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 40s
