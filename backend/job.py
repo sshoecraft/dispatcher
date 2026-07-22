@@ -37,6 +37,16 @@ class Job:
         log_dir = Path(info.prefix) / 'logs' / 'jobs'
         log_dir.mkdir(parents=True, exist_ok=True)
         return log_dir
+
+    def log_path(self, job_id: int) -> Path:
+        """Absolute path to a job's log file.
+
+        Always derived from the current prefix and the job ID
+        ({prefix}/logs/jobs/{id}.log) -- never from a value stored in the
+        database, which breaks when the prefix changes (e.g. host
+        ~/.dispatcher vs container /opt/dispatcher).
+        """
+        return Path(info.prefix) / 'logs' / 'jobs' / f"{job_id}.log"
     
     def create(
         self,
@@ -70,8 +80,8 @@ class Job:
                 session.refresh(job)
                 
                 # Create log file with job ID
-                log_dir = self._ensure_log_directory()
-                log_file_path = log_dir / f"{job.id}.log"
+                self._ensure_log_directory()
+                log_file_path = self.log_path(job.id)
                 
                 # Initialize detailed log file header
                 with open(log_file_path, 'w') as f:
@@ -426,13 +436,14 @@ class Job:
             if not job:
                 return False
             
-            # Delete log file if exists
-            if job.log_file_path and os.path.exists(job.log_file_path):
+            # Delete log file if exists (resolved from the current prefix)
+            log_file_path = self.log_path(job_id)
+            if log_file_path.exists():
                 try:
-                    os.remove(job.log_file_path)
-                    output.info(f"Deleted log file: {job.log_file_path}")
+                    log_file_path.unlink()
+                    output.info(f"Deleted log file: {log_file_path}")
                 except Exception as e:
-                    output.error(f"Failed to delete log file {job.log_file_path}: {e}")
+                    output.error(f"Failed to delete log file {log_file_path}: {e}")
             
             db_session.delete(job)
             db_session.commit()
@@ -460,11 +471,12 @@ class Job:
         
         # Delete log files
         for job in old_jobs:
-            if job.log_file_path and os.path.exists(job.log_file_path):
+            log_file_path = self.log_path(job.id)
+            if log_file_path.exists():
                 try:
-                    os.remove(job.log_file_path)
+                    log_file_path.unlink()
                 except Exception as e:
-                    output.error(f"Failed to delete log file {job.log_file_path}: {e}")
+                    output.error(f"Failed to delete log file {log_file_path}: {e}")
         
         count = old_jobs.count()
         old_jobs.delete()
@@ -487,8 +499,8 @@ class Job:
     def append_to_log(self, job_id: int, log_content: str) -> bool:
         """Append content to a job's log file"""
         try:
-            log_dir = self._ensure_log_directory()
-            log_file_path = log_dir / f"{job_id}.log"
+            self._ensure_log_directory()
+            log_file_path = self.log_path(job_id)
             
             with open(log_file_path, 'a') as f:
                 f.write(log_content)
@@ -512,7 +524,7 @@ class Job:
                 if not job_record.log_file_path:
                     return f"Error: No log file path configured for job {job_id}"
                 
-                log_file_path = Path(job_record.log_file_path)
+                log_file_path = self.log_path(job_id)
                 
                 # Create the log file if it doesn't exist, then read it
                 if not log_file_path.exists():

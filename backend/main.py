@@ -989,8 +989,8 @@ async def stream_job_logs(job_id: int):
                 yield f"data: Error: No log file path configured for job {job_id}\n\n"
                 return
                 
-            log_file_path = job_record.log_file_path
-            
+            log_file_path = str(job.log_path(job_id))
+
             if not os.path.exists(log_file_path):
                 yield f"data: Error: Log file not found at {log_file_path}\n\n"
                 return
